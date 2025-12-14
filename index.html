@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نظام إدارة العملاء - بيت الخزائن</title>
+    <title>نظام إدارة العملاء - IN ONE OPERATION</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -61,11 +61,20 @@
     <!-- Sidebar -->
     <aside id="sidebar" class="bg-[#0f3057] text-white w-64 flex-shrink-0 flex flex-col transition-all duration-300 shadow-xl z-20 h-full md:relative absolute transform -translate-x-full md:translate-x-0">
         <div class="p-6 flex flex-col items-center border-b border-blue-900/50">
-            <div class="w-16 h-16 bg-[#e5b57f] rounded-xl flex items-center justify-center mb-3 shadow-lg transform rotate-3">
-                <i data-lucide="briefcase" class="text-[#0f3057] w-8 h-8"></i>
+            <!-- New Logo Implementation -->
+            <div class="w-20 h-20 mb-3 bg-[#fdf6e7] rounded-full flex items-center justify-center shadow-lg relative overflow-hidden">
+                <!-- SVG Logo based on description (Circle with blue top, orange bottom, and number 1) -->
+                <svg viewBox="0 0 100 100" class="w-full h-full">
+                    <!-- Top Half Circle Stroke (Blue) -->
+                    <path d="M 10,50 A 40,40 0 1,1 90,50" fill="none" stroke="#0f3057" stroke-width="8" />
+                    <!-- Bottom Half Circle Stroke (Orange) -->
+                    <path d="M 90,50 A 40,40 0 1,1 10,50" fill="none" stroke="#f97316" stroke-width="8" />
+                    <!-- Number 1 -->
+                    <text x="50" y="75" font-family="Arial, sans-serif" font-weight="bold" font-size="65" text-anchor="middle" fill="#0f3057">1</text>
+                </svg>
             </div>
-            <h1 class="text-lg font-bold tracking-wider">بيت الخزائن</h1>
-            <p class="text-xs text-blue-300">للحلول المتكاملة</p>
+            <h1 class="text-lg font-bold tracking-wider text-center" style="font-family: Arial, sans-serif;">IN ONE OPERATION</h1>
+            <p class="text-xs text-blue-300 mt-1">Management System</p>
         </div>
 
         <nav class="flex-1 px-3 space-y-1 mt-6 overflow-y-auto custom-scrollbar">
@@ -478,31 +487,214 @@
             `;
         }
 
-        // 3. Design View (Placeholder)
+        // 3. Design View (Implemented)
         function renderDesignView() {
             return `
-                <div class="h-full flex flex-col justify-center items-center text-center text-gray-400 space-y-4">
-                    <div class="p-6 bg-gray-100 rounded-full">
-                        <i data-lucide="pen-tool" class="w-12 h-12 opacity-50"></i>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-140px)]">
+                    <!-- Left Column: Pricing & Contract -->
+                    <div class="lg:col-span-2 space-y-6">
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 border-t-4 border-t-purple-500 h-full overflow-y-auto custom-scrollbar">
+                            <div class="mb-6 border-b border-gray-100 pb-4">
+                                <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                                    <span class="w-1 h-6 bg-purple-600 rounded-full inline-block"></span>
+                                    التسعير والعقد
+                                </h2>
+                                <p class="text-sm text-gray-500 mt-1 mr-3">إصدار الكوتيشن، ومتابعة الموافقات</p>
+                            </div>
+                            
+                            <div class="space-y-6">
+                                <div class="bg-purple-50 p-6 rounded-xl border border-purple-100">
+                                    <div class="space-y-4">
+                                        <div class="space-y-1">
+                                            <label class="text-sm font-bold text-gray-700">قيمة الكوتيشن الإجمالية (ريال سعودي)</label>
+                                            <input type="number" placeholder="مثال: 55000" class="w-full text-lg font-bold text-purple-700 border-gray-300 rounded-lg p-3 focus:ring-purple-500 outline-none">
+                                        </div>
+                                        <div class="space-y-1">
+                                            <label class="text-sm font-bold text-gray-700">قيمة الدفعة الأولى (ريال سعودي)</label>
+                                            <input type="number" placeholder="مثال: 20000" class="w-full border-gray-300 rounded-lg p-3 outline-none">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="space-y-2">
+                                    <label class="text-sm font-bold text-gray-700">ارفاق صورة الكوتيشن الموقع</label>
+                                    <div class="h-32 bg-gray-50 border-2 border-dashed rounded-lg flex flex-col items-center justify-center text-gray-400 cursor-pointer hover:bg-gray-100 transition">
+                                        <i data-lucide="upload" class="w-8 h-8 mb-2 opacity-50"></i>
+                                        <span class="text-sm">اضغط لرفع الملف</span>
+                                    </div>
+                                </div>
+
+                                <div class="pt-6 border-t">
+                                    <div class="space-y-4">
+                                        <div class="space-y-1">
+                                            <label class="text-sm font-bold text-gray-700">حالة الموافقة على التصميم</label>
+                                            <select class="w-full border-gray-300 rounded-lg p-3 outline-none bg-white">
+                                                <option>بانتظار موافقة العميل</option>
+                                                <option>تم الاعتماد</option>
+                                                <option>مرفوض / تعديل</option>
+                                            </select>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <input type="checkbox" id="signed" class="w-4 h-4 text-purple-600 rounded">
+                                            <label for="signed" class="font-bold text-gray-700 select-none cursor-pointer">تأكيد توقيع العميل على العقد</label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="flex gap-3 mt-6">
+                                        <button class="flex-1 bg-purple-600 text-white hover:bg-purple-700 py-3 rounded-lg font-bold transition shadow-sm">حفظ وإصدار العقد</button>
+                                        <button class="px-6 border border-gray-200 hover:bg-gray-50 rounded-lg text-gray-600 font-medium transition">إعادة تعيين</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div>
-                        <h3 class="text-xl font-bold text-gray-600">التصميم والتسعير</h3>
-                        <p class="text-sm">هذه الصفحة قيد التطوير في النسخة التجريبية HTML</p>
+
+                    <!-- Right Column: Preview & Comments -->
+                    <div class="lg:col-span-1 space-y-4">
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 h-full flex flex-col">
+                            <h3 class="font-bold text-gray-700 mb-4 border-b pb-2">معاينة التصميم</h3>
+                            
+                            <div class="flex-1 bg-gray-100 rounded-lg border flex items-center justify-center text-gray-400 mb-4 min-h-[200px]">
+                                <div class="text-center">
+                                    <i data-lucide="image" class="w-12 h-12 mx-auto mb-2 opacity-50"></i>
+                                    <span>لا يوجد تصميم مرفوع</span>
+                                </div>
+                            </div>
+
+                            <div class="space-y-2 mb-4">
+                                <label class="text-sm font-bold text-gray-700">تعليمات للعميل / ملاحظات</label>
+                                <textarea placeholder="ملاحظات حول التصميم..." class="w-full border-gray-200 rounded-lg p-3 h-32 resize-none text-sm outline-none focus:border-purple-500"></textarea>
+                            </div>
+
+                            <div class="flex gap-2 mt-auto">
+                                <button class="w-full bg-blue-500 text-white hover:bg-blue-600 py-2 rounded-lg flex items-center justify-center gap-2 transition">
+                                    <i data-lucide="send" class="w-4 h-4"></i> إرسال للمراجعة
+                                </button>
+                                <button class="px-4 border border-gray-200 hover:bg-gray-50 rounded-lg text-gray-600">تفريغ</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             `;
         }
         
-        // 4. Installation View (Placeholder)
+        // 4. Installation View (Implemented)
         function renderInstallationView() {
             return `
-                 <div class="h-full flex flex-col justify-center items-center text-center text-gray-400 space-y-4">
-                    <div class="p-6 bg-gray-100 rounded-full">
-                        <i data-lucide="hammer" class="w-12 h-12 opacity-50"></i>
+                <div class="space-y-6 animate-fadeIn">
+                    <!-- Installation Stats -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        ${renderStatCard('إجمالي التركيبات', '45', 'hammer', 'text-orange-600 bg-orange-100')}
+                        ${renderStatCard('جاري التركيب', '8', 'clock', 'text-yellow-600 bg-yellow-100')}
+                        ${renderStatCard('مكتملة', '32', 'check-circle', 'text-green-600 bg-green-100')}
+                        ${renderStatCard('متأخرة', '2', 'x-circle', 'text-red-600 bg-red-100')}
                     </div>
-                    <div>
-                        <h3 class="text-xl font-bold text-gray-600">مرحلة التركيب</h3>
-                        <p class="text-sm">هذه الصفحة قيد التطوير في النسخة التجريبية HTML</p>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Left: Uploads -->
+                        <div class="lg:col-span-1 space-y-6">
+                           <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                             <h4 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
+                               <i data-lucide="image" class="w-5 h-5 text-green-600"></i> صور وفيديو ما بعد التركيب
+                             </h4>
+                             ${renderUploadZone('upload', 'اسحب الملفات هنا', 'أو انقر للاختيار', 'bg-green-50 border-green-200 text-green-500')}
+                             <button class="w-full mt-4 bg-blue-500 text-white hover:bg-blue-600 py-2 rounded-lg flex items-center justify-center gap-2 transition">
+                                <i data-lucide="check-circle" class="w-4 h-4"></i> تأكيد الاستلام
+                             </button>
+                           </div>
+
+                           <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                             <h4 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
+                               <i data-lucide="file-check" class="w-5 h-5 text-purple-600"></i> إرفاق إثبات التسليم
+                             </h4>
+                             ${renderUploadZone('file-text', 'اسحب صورة الإثبات', 'PDF, JPG', 'bg-purple-50 border-purple-200 text-purple-500')}
+                             <button class="w-full mt-4 bg-purple-600 text-white hover:bg-purple-700 py-2 rounded-lg flex items-center justify-center gap-2 transition">
+                                <i data-lucide="save" class="w-4 h-4"></i> حفظ
+                             </button>
+                           </div>
+                        </div>
+
+                        <!-- Right: Project Details Form -->
+                        <div class="lg:col-span-2">
+                          <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 border-t-4 border-t-orange-500">
+                            <div class="flex justify-between items-center mb-6">
+                              <h3 class="font-bold text-gray-800 text-lg flex items-center gap-2">
+                                <i data-lucide="edit" class="w-5 h-5 text-orange-500"></i> تفاصيل المشروع
+                              </h3>
+                              <div class="flex gap-2">
+                                <button class="bg-blue-500 text-white text-xs px-3 py-1.5 rounded hover:bg-blue-600 transition">+ جدولة تركيب جديدة</button>
+                                <button class="p-2 border rounded-lg hover:bg-gray-50"><i data-lucide="calendar" class="w-4 h-4"></i></button>
+                              </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              <div class="space-y-1">
+                                <label class="text-xs font-bold text-gray-600">رقم الوظيفة</label>
+                                <input type="text" placeholder="مثال: J-0123" class="w-full border-gray-200 rounded-lg p-2.5 bg-gray-50 text-right font-mono outline-none">
+                              </div>
+                              <div class="space-y-1">
+                                <label class="text-xs font-bold text-gray-600">اسم العميل</label>
+                                <input type="text" placeholder="مثال: أحمد محمد" class="w-full border-gray-200 rounded-lg p-2.5 outline-none">
+                              </div>
+                              
+                              <div class="space-y-1">
+                                <label class="text-xs font-bold text-gray-600">تاريخ بدء التركيب</label>
+                                <input type="date" class="w-full border-gray-200 rounded-lg p-2.5 outline-none">
+                              </div>
+                              <div class="space-y-1">
+                                <label class="text-xs font-bold text-gray-600">تاريخ الانتهاء المتوقع</label>
+                                <input type="date" class="w-full border-gray-200 rounded-lg p-2.5 outline-none">
+                              </div>
+                              
+                              <div class="space-y-1">
+                                <label class="text-xs font-bold text-gray-600">تاريخ الاستلام الفعلي</label>
+                                <input type="date" class="w-full border-gray-200 rounded-lg p-2.5 outline-none">
+                              </div>
+                              <div class="space-y-1">
+                                <label class="text-xs font-bold text-gray-600">حالة العمل</label>
+                                <select class="w-full border-gray-200 rounded-lg p-2.5 bg-white outline-none">
+                                   <option>قيد التنفيذ</option>
+                                   <option>معلق</option>
+                                   <option>مكتمل</option>
+                                </select>
+                              </div>
+
+                              <div class="space-y-1">
+                                <label class="text-xs font-bold text-gray-600">الدفعة الأولى (ريال)</label>
+                                <input type="number" placeholder="2000" class="w-full border-gray-200 rounded-lg p-2.5 outline-none">
+                              </div>
+                              <div class="space-y-1">
+                                <label class="text-xs font-bold text-gray-600">الدفعة الأخيرة (ريال)</label>
+                                <input type="number" placeholder="10000" class="w-full border-gray-200 rounded-lg p-2.5 outline-none">
+                              </div>
+                            </div>
+
+                            <div class="mt-6 bg-orange-50 border border-orange-200 p-4 rounded-lg flex gap-3 items-start">
+                              <i data-lucide="clock" class="w-5 h-5 text-orange-500 mt-0.5"></i>
+                              <div>
+                                <h5 class="font-bold text-orange-800 text-sm">ملاحظة المهلة</h5>
+                                <p class="text-xs text-orange-700 mt-1">مهلة الاستلام 45 يوماً. في حال مرور 30 يوماً دون استلام، يجب سداد باقي قيمة المشروع المنفذ.</p>
+                              </div>
+                            </div>
+
+                            <div class="mt-6 flex gap-3 justify-end">
+                               <button class="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center gap-2">
+                                   <i data-lucide="refresh-cw" class="w-4 h-4"></i> إعادة تعيين
+                               </button>
+                               <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
+                                   <i data-lucide="save" class="w-4 h-4"></i> تحديث
+                               </button>
+                            </div>
+                          </div>
+                        </div>
+                    </div>
+                    
+                    <!-- History Table -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-6">
+                        <div class="p-4 bg-gray-50 border-b border-gray-100 font-bold text-gray-700 flex items-center gap-2">
+                          <i data-lucide="layout-dashboard" class="w-4 h-4"></i> تاريخ التركيبات
+                        </div>
+                        <div class="p-8 text-center text-gray-400">لا توجد بيانات تركيبات سابقة</div>
                     </div>
                 </div>
             `;
