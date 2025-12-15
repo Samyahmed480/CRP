@@ -287,6 +287,7 @@
                 projectDetails: { kitchen: 1, bedroom: 2, cladding: 0, doors: 5, vanity: 2, tvUnit: 1 },
                 measurements: { status: 'pending', date: '', files: [] },
                 design: { status: 'pending', total: 0, firstPayment: 0, signed: false },
+                designImages: [],
                 quotationItems: [],
                 installation: { status: 'pending', jobNo: '', startDate: '', endDate: '', lastPayment: 0 },
                 logs: [
@@ -302,6 +303,7 @@
                 projectDetails: { kitchen: 1, bedroom: 0, cladding: 10, doors: 0, vanity: 3, tvUnit: 1 },
                 measurements: { status: 'completed', date: '2025-02-15', files: ['croquis.pdf'] },
                 design: { status: 'waiting_approval', total: 55000, firstPayment: 20000, signed: false },
+                designImages: [],
                 quotationItems: [
                     { name: 'أعمال تجليد خشب', qty: 10, price: 2500 },
                     { name: 'وحدة تلفاز', qty: 1, price: 5000 },
@@ -879,10 +881,24 @@
 
                             <div class="space-y-6 ${!selectedClient ? 'opacity-50 pointer-events-none filter blur-sm transition-all' : 'transition-all'}">
                                 <!-- Design Status & Files Placeholder -->
-                                <div class="bg-slate-50 dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-700 text-center">
-                                    <i data-lucide="image" class="w-12 h-12 text-slate-300 mx-auto mb-3"></i>
-                                    <p class="text-slate-500 font-medium">مساحة رفع ملفات التصميم (Mockup)</p>
-                                    <button class="mt-3 text-blue-600 text-sm hover:underline">استعراض الملفات</button>
+                                <div class="bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                                    <div class="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-6 flex flex-col items-center justify-center text-center hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors relative cursor-pointer">
+                                        <input type="file" multiple accept="image/*" onchange="handleDesignImageUpload(this)" class="absolute inset-0 opacity-0 cursor-pointer">
+                                        <i data-lucide="upload-cloud" class="w-10 h-10 text-purple-500 mb-2"></i>
+                                        <p class="text-sm font-bold text-slate-600 dark:text-slate-300">اضغط لرفع صور التصميم (Mockups)</p>
+                                        <p class="text-xs text-slate-400 mt-1">JPG, PNG (Max 5MB)</p>
+                                    </div>
+                                    
+                                    <!-- Gallery Grid -->
+                                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mt-4">
+                                        ${(selectedClient?.designImages || []).map((img, idx) => `
+                                            <div class="relative group aspect-video bg-white dark:bg-slate-800 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-600 shadow-sm">
+                                                <img src="${img}" class="w-full h-full object-cover transition-transform group-hover:scale-105">
+                                                <button onclick="deleteDesignImage(${idx})" class="absolute top-2 right-2 bg-red-500/90 hover:bg-red-600 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-all shadow-sm transform scale-90 group-hover:scale-100"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                            </div>
+                                        `).join('')}
+                                        ${(!selectedClient?.designImages || selectedClient.designImages.length === 0) ? '<p class="col-span-full text-center text-xs text-slate-400 py-4">لا توجد صور مرفقة</p>' : ''}
+                                    </div>
                                 </div>
 
                                 <div class="pt-6 border-t border-slate-100 dark:border-slate-700">
@@ -1017,9 +1033,14 @@
                                         <span class="text-slate-500 text-sm">الدفعة الأولى:</span>
                                         <input type="number" id="pricing-first-payment" value="${selectedClient?.design.firstPayment || 0}" class="w-24 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded px-2 py-1 text-sm font-bold" placeholder="0">
                                     </div>
-                                    <button onclick="savePricingData()" class="w-full bg-green-600 text-white py-2 rounded-lg font-bold hover:bg-green-700 transition shadow-lg shadow-green-900/20 flex justify-center gap-2 mt-2">
-                                        <i data-lucide="save" class="w-4 h-4"></i> حفظ العرض
-                                    </button>
+                                    <div class="flex gap-2 mt-2">
+                                        <button onclick="printDetailedQuotation(${selectedClient?.id})" class="flex-1 bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-900/20 flex justify-center gap-2" title="طباعة PDF">
+                                            <i data-lucide="printer" class="w-4 h-4"></i>
+                                        </button>
+                                        <button onclick="savePricingData()" class="flex-[2] bg-green-600 text-white py-2 rounded-lg font-bold hover:bg-green-700 transition shadow-lg shadow-green-900/20 flex justify-center gap-2">
+                                            <i data-lucide="save" class="w-4 h-4"></i> حفظ العرض
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1451,6 +1472,7 @@
                 measurements: { status: 'pending', date: '', files: [] },
                 appointment: { date: '', time: '', status: 'pending' },
                 design: { status: 'pending', total: 0, firstPayment: 0, signed: false },
+                designImages: [],
                 quotationItems: [],
                 installation: { status: 'pending', jobNo: '', startDate: '', endDate: '', lastPayment: 0 },
                 invoices: []
@@ -1571,6 +1593,36 @@
                 }
                 const url = `https://wa.me/${client.phone}?text=${encodeURIComponent(msg)}`;
                 window.open(url, '_blank');
+            }
+        }
+
+        // Design Images Logic
+        function handleDesignImageUpload(input) {
+            if (!selectedClientForDesignId || !input.files || input.files.length === 0) return;
+            const client = clients.find(c => c.id == selectedClientForDesignId);
+            if (!client) return;
+
+            if (!client.designImages) client.designImages = [];
+
+            Array.from(input.files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    client.designImages.push(e.target.result);
+                    saveClients();
+                    render(); // Re-render to show images
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function deleteDesignImage(idx) {
+            const client = clients.find(c => c.id == selectedClientForDesignId);
+            if (client && client.designImages) {
+                if(confirm('هل أنت متأكد من حذف هذه الصورة؟')) {
+                    client.designImages.splice(idx, 1);
+                    saveClients();
+                    render();
+                }
             }
         }
 
@@ -2005,6 +2057,123 @@
              const phone = c.whatsapp || c.phone;
              const url = `https://wa.me/${phone}`;
              window.open(url, '_blank');
+        }
+
+        function printDetailedQuotation(id) {
+            const client = clients.find(c => c.id === id);
+            if(!client) return;
+
+            const items = client.quotationItems || [];
+            const total = items.reduce((sum, item) => sum + (item.qty * item.price), 0);
+
+            const printWindow = window.open('', '_blank');
+            const logo = companySettings.logo ? `<img src="${companySettings.logo}" style="width: 80px; height: 80px; object-fit: contain;">` : `
+                <svg viewBox="0 0 100 100" style="width: 80px; height: 80px;">
+                    <path d="M 10,50 A 40,40 0 1,1 90,50" fill="none" stroke="#0f3057" stroke-width="8" stroke-linecap="round" />
+                    <path d="M 90,50 A 40,40 0 1,1 10,50" fill="none" stroke="#f97316" stroke-width="8" stroke-linecap="round" />
+                    <text x="50" y="72" font-family="Arial, sans-serif" font-weight="800" font-size="60" text-anchor="middle" fill="#0f3057">1</text>
+                </svg>
+            `;
+
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html lang="ar" dir="rtl">
+                <head>
+                    <meta charset="UTF-8">
+                    <title>عرض سعر تفصيلي - ${client.name}</title>
+                    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+                    <style>
+                        body { font-family: 'Cairo', sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }
+                        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0f3057; padding-bottom: 20px; margin-bottom: 40px; }
+                        .company-info h1 { color: #0f3057; margin: 0 0 10px 0; font-size: 24px; }
+                        .company-info p { margin: 2px 0; font-size: 13px; color: #64748b; }
+                        .invoice-meta { display: flex; justify-content: space-between; margin-bottom: 30px; background: #f8fafc; padding: 20px; border-radius: 12px; }
+                        .meta-item h3 { font-size: 12px; color: #64748b; margin: 0 0 5px 0; }
+                        .meta-item p { font-size: 16px; font-weight: bold; color: #0f172a; margin: 0; }
+                        table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+                        th { background: #0f3057; color: white; padding: 12px; text-align: right; font-size: 14px; }
+                        td { border-bottom: 1px solid #e2e8f0; padding: 12px; font-size: 14px; color: #334155; }
+                        .text-center { text-align: center; }
+                        .total-section { background: #f8fafc; padding: 20px; border-radius: 12px; margin-left: auto; width: 300px; }
+                        .total-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; }
+                        .total-row.final { border-top: 1px solid #e2e8f0; padding-top: 10px; font-weight: bold; font-size: 18px; color: #0f3057; }
+                        .footer { margin-top: 60px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 20px; }
+                        @media print {
+                            body { padding: 0; }
+                            th { -webkit-print-color-adjust: exact; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <div class="company-info">
+                            <h1>${companySettings.name}</h1>
+                            <p>${companySettings.address}</p>
+                            <p>هاتف: ${companySettings.phone}</p>
+                            <p>البريد الإلكتروني: ${companySettings.email}</p>
+                            <p>الرقم الضريبي: ${companySettings.taxId}</p>
+                        </div>
+                        <div>${logo}</div>
+                    </div>
+
+                    <div class="invoice-meta">
+                        <div class="meta-item">
+                            <h3>العميل</h3>
+                            <p>${client.name}</p>
+                            <p style="font-size: 12px; font-weight: normal; margin-top: 2px">${client.phone}</p>
+                        </div>
+                        <div class="meta-item">
+                            <h3>رقم العرض</h3>
+                            <p>QT-${client.code}</p>
+                        </div>
+                        <div class="meta-item">
+                            <h3>التاريخ</h3>
+                            <p>${new Date().toLocaleDateString('en-US')}</p>
+                        </div>
+                    </div>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th width="50" class="text-center">#</th>
+                                <th>البند / الوصف</th>
+                                <th width="80" class="text-center">الكمية</th>
+                                <th width="120">السعر الإفرادي</th>
+                                <th width="120">الإجمالي</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${items.map((item, idx) => `
+                                <tr>
+                                    <td class="text-center">${idx + 1}</td>
+                                    <td>${item.name}</td>
+                                    <td class="text-center">${item.qty}</td>
+                                    <td>${item.price.toLocaleString()}</td>
+                                    <td>${(item.qty * item.price).toLocaleString()}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+
+                    <div class="total-section">
+                        <div class="total-row final">
+                            <span>المجموع الكلي</span>
+                            <span>${total.toLocaleString()} ريال</span>
+                        </div>
+                        <div class="total-row" style="margin-top: 10px; font-size: 12px; color: #64748b;">
+                            <span>الأسعار تشمل ضريبة القيمة المضافة</span>
+                        </div>
+                    </div>
+
+                    <div class="footer">
+                        <p>تم إصدار هذا العرض إلكترونياً من نظام إدارة العملاء CRP</p>
+                        <p>صلاحية العرض 15 يوماً من تاريخه</p>
+                    </div>
+                    <script>window.print();<\/script>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
         }
 
         init();
