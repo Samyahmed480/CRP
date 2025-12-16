@@ -187,6 +187,10 @@
                 <i data-lucide="hammer" class="w-5 h-5 transition-transform group-hover:scale-110"></i>
                 <span class="font-medium text-base md:text-sm">مرحلة التركيب</span>
             </button>
+            <button onclick="switchTab('completed')" id="nav-completed" class="w-full flex items-center gap-3 px-4 py-3.5 md:py-3 rounded-lg transition-all duration-200 inactive-nav-item group">
+                <i data-lucide="archive" class="w-5 h-5 transition-transform group-hover:scale-110"></i>
+                <span class="font-medium text-base md:text-sm">المشاريع المنتهية</span>
+            </button>
             
             <div class="my-3 border-t border-blue-800/30 mx-2"></div>
             
@@ -605,6 +609,8 @@
                 html = renderPricingView(visibleClients);
             } else if (activeTab === 'installation') {
                 html = renderInstallationView(visibleClients);
+            } else if (activeTab === 'completed') {
+                html = renderCompletedProjectsView(visibleClients);
             } else if (activeTab === 'offers') {
                 html = renderOffersView(visibleClients);
             } else if (activeTab === 'financials') {
@@ -1628,6 +1634,78 @@
                                 ${selectedClient.location ? `<a href="${selectedClient.location}" target="_blank" class="text-blue-600 text-xs flex items-center gap-1 mt-2 hover:underline"><i data-lucide="map-pin" class="w-3 h-3"></i> فتح الموقع</a>` : ''}
                             </div>
                             ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 4.5 Completed Projects View
+        function renderCompletedProjectsView(data) {
+            const completedClients = data.filter(c => c.status === 'completed');
+            const totalValue = completedClients.reduce((sum, c) => sum + (parseFloat(c.design?.total) || 0), 0);
+
+            return `
+                <div class="space-y-6 animate-fadeIn">
+                    <!-- Stats -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                        ${renderStatCard('المشاريع المكتملة', completedClients.length, 'check-circle', 'bg-green-600', 'text-white')}
+                        ${renderStatCard('إجمالي القيمة', totalValue.toLocaleString() + ' ' + (companySettings.currency || 'SAR'), 'dollar-sign', 'bg-white', 'text-slate-800', 'border-l-4 border-blue-500')}
+                        ${renderStatCard('متوسط قيمة المشروع', (completedClients.length ? Math.round(totalValue / completedClients.length) : 0).toLocaleString() + ' ' + (companySettings.currency || 'SAR'), 'bar-chart', 'bg-white', 'text-slate-800', 'border-l-4 border-purple-500')}
+                    </div>
+
+                    <!-- Table -->
+                    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden transition-colors">
+                        <div class="p-5 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 flex justify-between items-center">
+                            <h3 class="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                                <i data-lucide="archive" class="w-5 h-5 text-slate-400"></i> أرشيف المشاريع المنتهية
+                            </h3>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-right text-sm">
+                                <thead class="bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-300 font-medium">
+                                    <tr>
+                                        <th class="p-3">العميل</th>
+                                        <th class="p-3">تاريخ الانتهاء</th>
+                                        <th class="p-3">تفاصيل المشروع</th>
+                                        <th class="p-3">القيمة النهائية</th>
+                                        <th class="p-3">فريق التركيب</th>
+                                        <th class="p-3 text-center">إجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
+                                    ${completedClients.map(c => `
+                                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                                            <td class="p-3">
+                                                <div class="font-bold text-slate-800 dark:text-slate-200">${c.name}</div>
+                                                <div class="text-xs text-slate-400 font-mono">${c.code}</div>
+                                            </td>
+                                            <td class="p-3 text-slate-600 dark:text-slate-400 font-mono">${c.installation?.endDate || '-'}</td>
+                                            <td class="p-3">
+                                                <div class="flex gap-1 flex-wrap">
+                                                    ${Object.entries(c.projectDetails).map(([k, v]) => v > 0 ? 
+                                                        `<span class="text-[10px] bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-300">${k === 'kitchen' ? 'مطبخ' : k === 'bedroom' ? 'نوم' : k}</span>` 
+                                                        : '').join('')}
+                                                </div>
+                                            </td>
+                                            <td class="p-3 font-bold text-green-600">${parseFloat(c.design?.total || 0).toLocaleString()}</td>
+                                            <td class="p-3 text-slate-600 dark:text-slate-400 text-xs">${c.installation?.team || '-'}</td>
+                                            <td class="p-3 text-center">
+                                                <div class="flex items-center justify-center gap-2">
+                                                    <button onclick="openClientModal(${c.id})" class="p-2 text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors" title="التفاصيل الكاملة">
+                                                        <i data-lucide="eye" class="w-4 h-4"></i>
+                                                    </button>
+                                                    ${c.installation?.deliveryReceipt ? `
+                                                    <button onclick="openLightbox('${c.installation.deliveryReceipt}')" class="p-2 text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors" title="إيصال الاستلام">
+                                                        <i data-lucide="file-check" class="w-4 h-4"></i>
+                                                    </button>` : ''}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                    ${completedClients.length === 0 ? '<tr><td colspan="6" class="text-center py-10 text-slate-400">لا توجد مشاريع منتهية حتى الآن</td></tr>' : ''}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
