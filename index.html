@@ -316,7 +316,8 @@
             taxId: '300000000000003',
             taxRate: '15',
             contractTerms: '',
-            logo: '' 
+            logo: '',
+            currency: 'SAR'
         };
 
         let currentUser = users[0]; // Start as Admin
@@ -1292,19 +1293,23 @@
                                     <div class="bg-slate-100 dark:bg-slate-900 p-5 rounded-xl min-w-[300px] space-y-3">
                                         <div class="flex justify-between text-sm">
                                             <span class="text-slate-500">المجموع قبل الضريبة:</span>
-                                            <span class="font-bold text-slate-800 dark:text-white">${subTotal.toLocaleString()} <span class="text-xs font-normal">SAR</span></span>
+                                            <span class="font-bold text-slate-800 dark:text-white">${subTotal.toLocaleString()} <span class="text-xs font-normal">${companySettings.currency || 'SAR'}</span></span>
                                         </div>
                                         <div class="flex justify-between text-sm">
                                             <span class="text-slate-500">الضريبة (${taxRate}%):</span>
-                                            <span class="font-bold text-red-500">${taxAmount.toLocaleString()} <span class="text-xs font-normal">SAR</span></span>
+                                            <span class="font-bold text-red-500">${taxAmount.toLocaleString()} <span class="text-xs font-normal">${companySettings.currency || 'SAR'}</span></span>
                                         </div>
                                         <div class="flex justify-between text-sm border-t border-slate-200 dark:border-slate-700 pt-2 mt-2">
                                             <span class="text-slate-500 font-bold">المجموع الكلي:</span>
-                                            <span class="font-bold text-lg text-slate-800 dark:text-white">${totalAmount.toLocaleString()} <span class="text-xs font-normal">SAR</span></span>
+                                            <span class="font-bold text-lg text-slate-800 dark:text-white">${totalAmount.toLocaleString()} <span class="text-xs font-normal">${companySettings.currency || 'SAR'}</span></span>
                                         </div>
                                         <div class="flex justify-between items-center gap-4">
                                             <span class="text-slate-500 text-sm">الدفعة الأولى:</span>
-                                            <input type="number" id="pricing-first-payment" value="${selectedClient?.design?.firstPayment || 0}" class="w-24 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded px-2 py-1 text-sm font-bold" placeholder="0">
+                                            <input type="number" id="pricing-first-payment" value="${selectedClient?.design?.firstPayment || 0}" oninput="updatePricingRemaining(this.value, ${totalAmount})" class="w-24 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded px-2 py-1 text-sm font-bold" placeholder="0">
+                                        </div>
+                                        <div class="flex justify-between items-center gap-4 mt-2 border-t border-slate-200 dark:border-slate-700 pt-2">
+                                            <span class="text-slate-500 text-sm font-bold">المتبقي:</span>
+                                            <span id="pricing-remaining" class="font-bold text-red-500">${(totalAmount - (selectedClient?.design?.firstPayment || 0)).toLocaleString()} <span class="text-xs font-normal">${companySettings.currency || 'SAR'}</span></span>
                                         </div>
                                         <div class="flex gap-2 mt-2">
                                             <button onclick="printDetailedQuotation(${selectedClient?.id})" class="flex-1 bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-900/20 flex justify-center gap-2" title="طباعة PDF">
@@ -1406,26 +1411,66 @@
                                     
                                     <!-- 1. Project & Design Info (Read Only) -->
                                     <div class="bg-slate-50 dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
-                                        <h4 class="font-bold text-slate-700 dark:text-slate-200 mb-3 text-sm flex items-center gap-2">
-                                            <i data-lucide="folder-open" class="w-4 h-4 text-blue-500"></i> ملفات التصميم والملاحظات
-                                        </h4>
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div>
-                                                <p class="text-xs text-slate-500 mb-1">التصاميم المعتمدة:</p>
-                                                <div class="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
-                                                    ${selectedClient?.design?.itemFiles ? Object.values(selectedClient.design.itemFiles).flat().map(f => `
-                                                        <div onclick="openLightbox('${f.url}')" class="w-16 h-16 flex-shrink-0 rounded-lg border border-slate-200 overflow-hidden cursor-pointer bg-white">
-                                                            <img src="${f.url}" class="w-full h-full object-cover">
+                                        <div class="flex justify-between items-center mb-3">
+                                            <h4 class="font-bold text-slate-700 dark:text-slate-200 text-sm flex items-center gap-2">
+                                                <i data-lucide="folder-open" class="w-4 h-4 text-blue-500"></i> ملفات المشروع (تصميم + مقاسات)
+                                            </h4>
+                                            <div class="flex gap-2">
+                                                 <button onclick="downloadFiles('measurements')" class="text-[10px] bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 px-2 py-1 rounded hover:bg-slate-50 dark:hover:bg-slate-700 dark:text-slate-300">تحميل المقاسات</button>
+                                                 <button onclick="downloadFiles('design')" class="text-[10px] bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 px-2 py-1 rounded hover:bg-slate-50 dark:hover:bg-slate-700 dark:text-slate-300">تحميل التصاميم</button>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar pr-1">
+                                            ${items.map(item => {
+                                                const designFiles = (selectedClient?.design?.itemFiles && selectedClient.design.itemFiles[item.id]) || [];
+                                                const measureFiles = (selectedClient?.measurements?.itemFiles && selectedClient.measurements.itemFiles[item.id]) || [];
+                                                const itemNotes = (selectedClient?.design?.itemNotes && selectedClient.design.itemNotes[item.id]) || '';
+                                                
+                                                if (designFiles.length === 0 && measureFiles.length === 0 && !itemNotes) return '';
+
+                                                return `
+                                                    <div class="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-600 overflow-hidden">
+                                                        <div class="p-2 bg-slate-100 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600 font-bold text-sm flex justify-between">
+                                                            <span>${item.label}</span>
                                                         </div>
-                                                    `).join('') : '<span class="text-xs text-slate-400">لا توجد تصاميم</span>'}
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <p class="text-xs text-slate-500 mb-1">ملاحظات التصميم:</p>
-                                                <div class="text-xs bg-white dark:bg-slate-800 p-2 rounded border border-slate-200 dark:border-slate-600 h-16 overflow-y-auto">
-                                                    ${selectedClient?.design?.itemNotes ? Object.values(selectedClient.design.itemNotes).join('<br>') : 'لا توجد ملاحظات'}
-                                                </div>
-                                            </div>
+                                                        <div class="p-3 space-y-3">
+                                                            ${measureFiles.length > 0 ? `
+                                                            <div>
+                                                                <p class="text-[10px] font-bold text-slate-500 mb-1 flex items-center gap-1"><i data-lucide="ruler" class="w-3 h-3"></i> المقاسات والموقع:</p>
+                                                                <div class="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+                                                                    ${measureFiles.map(f => `
+                                                                        <div onclick="${f.type.includes('pdf') ? `window.open('${f.url}')` : `openLightbox('${f.url}')`}" class="w-12 h-12 flex-shrink-0 rounded border border-slate-200 cursor-pointer overflow-hidden relative group bg-slate-50">
+                                                                             ${f.type.startsWith('video') ? '<div class="absolute inset-0 flex items-center justify-center bg-black/30"><i data-lucide="play" class="w-4 h-4 text-white"></i></div>' : ''}
+                                                                             ${f.type.includes('pdf') ? '<div class="w-full h-full flex items-center justify-center"><i data-lucide="file-text" class="w-5 h-5 text-red-500"></i></div>' : `<img src="${f.url}" class="w-full h-full object-cover">`}
+                                                                        </div>
+                                                                    `).join('')}
+                                                                </div>
+                                                            </div>` : ''}
+
+                                                            ${designFiles.length > 0 ? `
+                                                            <div>
+                                                                <p class="text-[10px] font-bold text-purple-500 mb-1 flex items-center gap-1"><i data-lucide="image" class="w-3 h-3"></i> التصاميم المعتمدة:</p>
+                                                                <div class="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+                                                                    ${designFiles.map(f => `
+                                                                        <div onclick="${f.type.includes('pdf') ? `window.open('${f.url}')` : `openLightbox('${f.url}')`}" class="w-16 h-16 flex-shrink-0 rounded border border-purple-200 cursor-pointer overflow-hidden relative group bg-white">
+                                                                             ${f.type.startsWith('video') ? '<div class="absolute inset-0 flex items-center justify-center bg-black/30"><i data-lucide="play" class="w-4 h-4 text-white"></i></div>' : ''}
+                                                                             ${f.type.includes('pdf') ? '<div class="w-full h-full flex items-center justify-center"><i data-lucide="file-text" class="w-6 h-6 text-red-500"></i></div>' : `<img src="${f.url}" class="w-full h-full object-cover">`}
+                                                                        </div>
+                                                                    `).join('')}
+                                                                </div>
+                                                            </div>` : ''}
+
+                                                            ${itemNotes ? `
+                                                            <div class="bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-100 dark:border-yellow-800">
+                                                                <p class="text-[10px] font-bold text-yellow-700 dark:text-yellow-500 mb-1 flex items-center gap-1"><i data-lucide="sticky-note" class="w-3 h-3"></i> ملاحظات:</p>
+                                                                <p class="text-xs text-slate-700 dark:text-slate-300">${itemNotes}</p>
+                                                            </div>` : ''}
+                                                        </div>
+                                                    </div>
+                                                `;
+                                            }).join('')}
+                                            ${items.length === 0 ? '<p class="text-center text-slate-400 text-sm">لا توجد بنود</p>' : ''}
                                         </div>
                                     </div>
 
@@ -1437,15 +1482,15 @@
                                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                                             <div class="bg-white dark:bg-slate-800 p-3 rounded-lg border border-green-100 dark:border-green-700">
                                                 <span class="text-xs text-slate-500 block">إجمالي العقد</span>
-                                                <span class="font-bold text-slate-800 dark:text-white">${total.toLocaleString()} ريال</span>
+                                                <span class="font-bold text-slate-800 dark:text-white">${total.toLocaleString()} ${companySettings.currency || 'SAR'}</span>
                                             </div>
                                             <div class="bg-white dark:bg-slate-800 p-3 rounded-lg border border-green-100 dark:border-green-700">
                                                 <span class="text-xs text-slate-500 block">الدفعة الأولى (مدفوعة)</span>
-                                                <span class="font-bold text-green-600">${firstPay.toLocaleString()} ريال</span>
+                                                <span class="font-bold text-green-600">${firstPay.toLocaleString()} ${companySettings.currency || 'SAR'}</span>
                                             </div>
                                             <div class="bg-white dark:bg-slate-800 p-3 rounded-lg border border-red-100 dark:border-red-900/50">
                                                 <span class="text-xs text-slate-500 block">الدفعة الأخيرة (المتبقي)</span>
-                                                <span class="font-bold text-red-500">${remaining.toLocaleString()} ريال</span>
+                                                <span class="font-bold text-red-500">${remaining.toLocaleString()} ${companySettings.currency || 'SAR'}</span>
                                             </div>
                                         </div>
                                         
@@ -1489,6 +1534,10 @@
                                                 <label class="form-label">رقم أمر الشغل (Job No)</label>
                                                 <input type="text" id="install-job-input" value="${selectedClient?.installation?.jobNo || ''}" class="form-input font-mono" placeholder="JOB-XXX">
                                             </div>
+                                            <div class="space-y-1 md:col-span-2">
+                                                <label class="form-label">فريق التركيب (أسماء الفنيين)</label>
+                                                <input type="text" id="install-team-input" value="${selectedClient?.installation?.team || ''}" class="form-input" placeholder="مثال: محمد، أحمد، ...">
+                                            </div>
                                         </div>
                                         <div class="flex flex-wrap gap-3 mt-4">
                                             <button onclick="saveInstallationSchedule()" class="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 text-xs font-bold flex items-center gap-2">
@@ -1499,6 +1548,9 @@
                                             </button>
                                             <button onclick="sendTeamOnWay()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-xs font-bold flex items-center gap-2 ml-auto">
                                                 <i data-lucide="truck" class="w-3 h-3"></i> الفريق في الطريق
+                                            </button>
+                                            <button onclick="printWorkOrder(selectedClientForInstallId)" class="bg-slate-700 text-white px-4 py-2 rounded-lg hover:bg-slate-800 text-xs font-bold flex items-center gap-2">
+                                                <i data-lucide="printer" class="w-3 h-3"></i> طباعة أمر شغل
                                             </button>
                                         </div>
                                     </div>
@@ -1601,7 +1653,7 @@
             if (!selectedClientForInstallId) return;
             const client = clients.find(c => c.id == selectedClientForInstallId);
             if (client) {
-                const msg = `مرحباً ${client.name}،\nنود تذكيركم بقرب موعد التركيب.\nيرجى التكرم بسداد الدفعة الأخيرة المتبقية وقدرها (${amount.toLocaleString()} ريال) لضمان اعتماد موعد التركيب.\nشكراً لتعاونكم.`;
+                const msg = `مرحباً ${client.name}،\nنود تذكيركم بقرب موعد التركيب.\nيرجى التكرم بسداد الدفعة الأخيرة المتبقية وقدرها (${amount.toLocaleString()} ${companySettings.currency || 'SAR'}) لضمان اعتماد موعد التركيب.\nشكراً لتعاونكم.`;
                 const url = `https://wa.me/${client.whatsapp || client.phone}?text=${encodeURIComponent(msg)}`;
                 window.open(url, '_blank');
             }
@@ -1613,10 +1665,12 @@
             if (client) {
                 const date = document.getElementById('install-date-input').value;
                 const job = document.getElementById('install-job-input').value;
+                const team = document.getElementById('install-team-input').value;
                 
                 if(!client.installation) client.installation = {};
                 client.installation.startDate = date;
                 client.installation.jobNo = job;
+                client.installation.team = team;
                 client.status = 'installation';
                 
                 client.logs.push({ date: new Date().toLocaleDateString('en-US'), type: 'system', text: `تم تحديث موعد التركيب: ${date}` });
@@ -1787,7 +1841,7 @@
                 <div class="space-y-6 animate-fadeIn">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
                         ${renderStatCard('إجمالي العروض', offers.length, 'file-text', 'bg-blue-600', 'text-white')}
-                        ${renderStatCard('قيمة العروض', offers.reduce((a,b) => a + (parseInt(b.design.total)||0), 0).toLocaleString() + ' ريال', 'dollar-sign', 'bg-white', 'text-slate-800', 'border-l-4 border-green-500')}
+                        ${renderStatCard('قيمة العروض', offers.reduce((a,b) => a + (parseInt(b.design.total)||0), 0).toLocaleString() + ' ' + (companySettings.currency || 'SAR'), 'dollar-sign', 'bg-white', 'text-slate-800', 'border-l-4 border-green-500')}
                         ${renderStatCard('تم التعاقد', offers.filter(c => c.design.contractSigned).length, 'check-circle', 'bg-white', 'text-slate-800', 'border-l-4 border-purple-500')}
                     </div>
 
@@ -1812,8 +1866,8 @@
                                         <tr class="hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
                                             <td class="p-3 font-mono text-slate-500">${c.code}-QT</td>
                                             <td class="p-3 font-bold text-slate-800 dark:text-slate-200">${c.name}</td>
-                                            <td class="p-3 text-slate-800 dark:text-slate-200 font-bold">${parseInt(c.design.total).toLocaleString()} ريال</td>
-                                            <td class="p-3 text-green-600">${parseInt(c.design.firstPayment).toLocaleString()} ريال</td>
+                                            <td class="p-3 text-slate-800 dark:text-slate-200 font-bold">${parseInt(c.design.total).toLocaleString()} ${companySettings.currency || 'SAR'}</td>
+                                            <td class="p-3 text-green-600">${parseInt(c.design.firstPayment).toLocaleString()} ${companySettings.currency || 'SAR'}</td>
                                             <td class="p-3">
                                                 <span class="px-2.5 py-1 rounded-full text-xs font-bold ${c.design.contractSigned ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}">
                                                     ${c.design.contractSigned ? 'تم التعاقد' : 'بانتظار الموافقة'}
@@ -1851,9 +1905,9 @@
                 <div class="space-y-6 animate-fadeIn">
                     <!-- Stats Cards -->
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-                        ${renderStatCard('إجمالي العقود', totalContract.toLocaleString() + ' ريال', 'coins', 'bg-blue-600', 'text-white')}
-                        ${renderStatCard('المبالغ المحصلة', totalPaid.toLocaleString() + ' ريال', 'check-circle-2', 'bg-green-600', 'text-white')}
-                        ${renderStatCard('المبالغ المتبقية', totalRemaining.toLocaleString() + ' ريال', 'clock', 'bg-red-500', 'text-white')}
+                        ${renderStatCard('إجمالي العقود', totalContract.toLocaleString() + ' ' + (companySettings.currency || 'SAR'), 'coins', 'bg-blue-600', 'text-white')}
+                        ${renderStatCard('المبالغ المحصلة', totalPaid.toLocaleString() + ' ' + (companySettings.currency || 'SAR'), 'check-circle-2', 'bg-green-600', 'text-white')}
+                        ${renderStatCard('المبالغ المتبقية', totalRemaining.toLocaleString() + ' ' + (companySettings.currency || 'SAR'), 'clock', 'bg-red-500', 'text-white')}
                     </div>
 
                     <!-- Clients Financial Table -->
@@ -1934,9 +1988,9 @@
                 <div class="space-y-6 animate-fadeIn">
                     <!-- Financial Summary Cards -->
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-                        ${renderStatCard('إجمالي الإيرادات', totalIncome.toLocaleString() + ' ريال', 'arrow-down-circle', 'bg-green-600', 'text-white')}
-                        ${renderStatCard('إجمالي المصروفات', totalExpenses.toLocaleString() + ' ريال', 'arrow-up-circle', 'bg-red-500', 'text-white')}
-                        ${renderStatCard('صافي الأرباح', netProfit.toLocaleString() + ' ريال', 'wallet', 'bg-white', 'text-slate-800', `border-l-4 ${netProfit >= 0 ? 'border-green-500' : 'border-red-500'}`)}
+                        ${renderStatCard('إجمالي الإيرادات', totalIncome.toLocaleString() + ' ' + (companySettings.currency || 'SAR'), 'arrow-down-circle', 'bg-green-600', 'text-white')}
+                        ${renderStatCard('إجمالي المصروفات', totalExpenses.toLocaleString() + ' ' + (companySettings.currency || 'SAR'), 'arrow-up-circle', 'bg-red-500', 'text-white')}
+                        ${renderStatCard('صافي الأرباح', netProfit.toLocaleString() + ' ' + (companySettings.currency || 'SAR'), 'wallet', 'bg-white', 'text-slate-800', `border-l-4 ${netProfit >= 0 ? 'border-green-500' : 'border-red-500'}`)}
                     </div>
 
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -2003,7 +2057,7 @@
                                         </select>
                                     </div>
                                     <div class="space-y-1">
-                                        <label class="form-label">المبلغ (ريال)</label>
+                                        <label class="form-label">المبلغ (${companySettings.currency || 'SAR'})</label>
                                         <input type="number" id="exp-amount" class="form-input" placeholder="0.00">
                                     </div>
                                     <div class="space-y-1">
@@ -2135,15 +2189,15 @@
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm transition-colors">
                             <p class="text-sm text-slate-500 dark:text-slate-400">إجمالي العقود</p>
-                            <p class="text-2xl font-bold text-slate-800 dark:text-white" id="report-total-contracts">0 ريال</p>
+                            <p class="text-2xl font-bold text-slate-800 dark:text-white" id="report-total-contracts">0 ${companySettings.currency || 'SAR'}</p>
                         </div>
                         <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm transition-colors">
                             <p class="text-sm text-slate-500 dark:text-slate-400">المحصل</p>
-                            <p class="text-2xl font-bold text-green-600" id="report-total-collected">0 ريال</p>
+                            <p class="text-2xl font-bold text-green-600" id="report-total-collected">0 ${companySettings.currency || 'SAR'}</p>
                         </div>
                         <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm transition-colors">
                             <p class="text-sm text-slate-500 dark:text-slate-400">المتبقي</p>
-                            <p class="text-2xl font-bold text-red-500" id="report-total-remaining">0 ريال</p>
+                            <p class="text-2xl font-bold text-red-500" id="report-total-remaining">0 ${companySettings.currency || 'SAR'}</p>
                         </div>
                          <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm transition-colors">
                             <p class="text-sm text-slate-500 dark:text-slate-400">عدد العملاء</p>
@@ -2203,6 +2257,10 @@
                                 <div class="space-y-1">
                                     <label class="form-label">العنوان</label>
                                     <input type="text" id="set-address" value="${companySettings.address}" class="form-input">
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="form-label">العملة</label>
+                                    <input type="text" id="set-currency" value="${companySettings.currency || 'SAR'}" class="form-input" placeholder="SAR, USD, EGP...">
                                 </div>
                                 <div class="space-y-1">
                                     <label class="form-label">الرقم الضريبي</label>
@@ -2396,6 +2454,7 @@
             companySettings.phone = document.getElementById('set-phone').value;
             companySettings.email = document.getElementById('set-email').value;
             companySettings.address = document.getElementById('set-address').value;
+            companySettings.currency = document.getElementById('set-currency').value || 'SAR';
             companySettings.taxId = document.getElementById('set-tax').value;
             companySettings.taxRate = document.getElementById('set-tax-rate').value;
             companySettings.contractTerms = document.getElementById('set-terms').value;
@@ -2421,9 +2480,9 @@
             const totalRemaining = totalContracts - totalCollected;
 
             // Update Summary Cards
-            document.getElementById('report-total-contracts').textContent = totalContracts.toLocaleString() + ' ريال';
-            document.getElementById('report-total-collected').textContent = totalCollected.toLocaleString() + ' ريال';
-            document.getElementById('report-total-remaining').textContent = totalRemaining.toLocaleString() + ' ريال';
+            document.getElementById('report-total-contracts').textContent = totalContracts.toLocaleString() + ' ' + (companySettings.currency || 'SAR');
+            document.getElementById('report-total-collected').textContent = totalCollected.toLocaleString() + ' ' + (companySettings.currency || 'SAR');
+            document.getElementById('report-total-remaining').textContent = totalRemaining.toLocaleString() + ' ' + (companySettings.currency || 'SAR');
 
             // Status Chart
             new Chart(ctxStatus, {
@@ -2445,7 +2504,7 @@
                 data: {
                     labels: ['إجمالي العقود', 'المحصل', 'المتبقي'],
                     datasets: [{
-                        label: 'القيم المالية (ريال)',
+                        label: `القيم المالية (${companySettings.currency || 'SAR'})`,
                         data: [totalContracts, totalCollected, totalRemaining],
                         backgroundColor: ['#3b82f6', '#22c55e', '#ef4444'],
                         borderRadius: 5
@@ -2817,6 +2876,7 @@
             let clientId = null;
             if (activeTab === 'design') clientId = selectedClientForDesignId;
             else if (activeTab === 'pricing') clientId = selectedClientForPricingId;
+            else if (activeTab === 'installation') clientId = selectedClientForInstallId;
             
             if (!clientId) return alert('يرجى اختيار عميل أولاً');
             
@@ -2928,6 +2988,12 @@
                 </body>
                 </html>
             `);
+        }
+
+        function updatePricingRemaining(paid, total) {
+            const remaining = total - (parseFloat(paid) || 0);
+            const el = document.getElementById('pricing-remaining');
+            if(el) el.innerHTML = `${remaining.toLocaleString()} <span class="text-xs font-normal">${companySettings.currency || 'SAR'}</span>`;
         }
 
         function updateItemDesignNote(itemId, note) {
@@ -3107,10 +3173,75 @@
             }
         }
 
+        function renderEditCounter(label, key, value) {
+            return `
+                <div class="flex flex-col bg-white dark:bg-slate-800 p-2 rounded border border-slate-200 dark:border-slate-600 items-center">
+                    <span class="text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">${label}</span>
+                    <div class="flex items-center gap-2">
+                        <button onclick="adjustEditCount('${key}', -1)" class="w-6 h-6 flex items-center justify-center bg-slate-100 dark:bg-slate-700 rounded hover:bg-red-100 text-slate-600 dark:text-slate-300 font-bold">-</button>
+                        <span id="edit-count-${key}" class="font-bold text-sm dark:text-white w-4 text-center">${value}</span>
+                        <button onclick="adjustEditCount('${key}', 1)" class="w-6 h-6 flex items-center justify-center bg-slate-100 dark:bg-slate-700 rounded hover:bg-green-100 text-slate-600 dark:text-slate-300 font-bold">+</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function adjustEditCount(key, delta) {
+            const el = document.getElementById(`edit-count-${key}`);
+            if(el) {
+                let val = parseInt(el.textContent) || 0;
+                val = Math.max(0, val + delta);
+                el.textContent = val;
+            }
+        }
+
+        function renderEditCustomItemsList(client) {
+            if (!client.customProjects || client.customProjects.length === 0) {
+                return '<p class="text-sm text-slate-400 text-center py-2 italic">لم يتم إضافة بنود بعد</p>';
+            }
+            return client.customProjects.map((item, idx) => `
+                <div class="flex justify-between items-center bg-white dark:bg-slate-800 p-2 rounded border border-slate-200 dark:border-slate-700 shadow-sm text-sm">
+                    <span class="font-medium text-slate-700 dark:text-slate-200">${item.name}</span>
+                    <div class="flex items-center gap-3">
+                        <span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs font-bold">${item.qty}</span>
+                        <button onclick="removeEditCustomItem(${client.id}, ${idx})" class="text-red-500 hover:bg-red-50 p-1 rounded transition-colors"><i data-lucide="trash-2" class="w-3 h-3"></i></button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function addEditCustomItem(id) {
+            const client = clients.find(c => c.id === id);
+            if(!client) return;
+            const nameInput = document.getElementById('edit-custom-name');
+            const qtyInput = document.getElementById('edit-custom-qty');
+            const name = nameInput.value;
+            const qty = parseInt(qtyInput.value);
+            if(name && qty > 0) {
+                if(!client.customProjects) client.customProjects = [];
+                client.customProjects.push({ name, qty });
+                nameInput.value = '';
+                qtyInput.value = '';
+                nameInput.focus();
+                document.getElementById('edit-custom-list').innerHTML = renderEditCustomItemsList(client);
+                lucide.createIcons();
+            }
+        }
+
+        function removeEditCustomItem(id, idx) {
+            const client = clients.find(c => c.id === id);
+            if(client && client.customProjects) {
+                client.customProjects.splice(idx, 1);
+                document.getElementById('edit-custom-list').innerHTML = renderEditCustomItemsList(client);
+                lucide.createIcons();
+            }
+        }
+
         function openEditClientModal(id) {
             const client = clients.find(c => c.id === id);
             if(!client) return;
             const modal = document.getElementById('editClientModal');
+            const pd = client.projectDetails || { kitchen: 0, bedroom: 0, cladding: 0, doors: 0, vanity: 0, tvUnit: 0 };
             
             modal.innerHTML = `
                 <div class="bg-white dark:bg-slate-800 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden animate-scaleIn flex flex-col transition-colors">
@@ -3135,6 +3266,36 @@
                             <div class="space-y-1">
                                 <label class="form-label">الموقع (رابط)</label>
                                 <input type="text" id="edit-location" value="${client.location || ''}" class="form-input">
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <h4 class="font-bold text-slate-700 dark:text-slate-200 mb-3 text-sm flex items-center gap-2"><i data-lucide="layers" class="w-4 h-4"></i> تعديل تفاصيل المشروع (المطلوب)</h4>
+                            <div class="grid grid-cols-3 md:grid-cols-6 gap-3">
+                                ${renderEditCounter('مطبخ', 'kitchen', pd.kitchen || 0)}
+                                ${renderEditCounter('نوم', 'bedroom', pd.bedroom || 0)}
+                                ${renderEditCounter('تجليد', 'cladding', pd.cladding || 0)}
+                                ${renderEditCounter('أبواب', 'doors', pd.doors || 0)}
+                                ${renderEditCounter('خزائن', 'vanity', pd.vanity || 0)}
+                                ${renderEditCounter('TV', 'tvUnit', pd.tvUnit || 0)}
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <h4 class="font-bold text-slate-700 dark:text-slate-200 mb-3 text-sm flex items-center gap-2"><i data-lucide="plus-square" class="w-4 h-4"></i> بنود مخصصة (إضافية)</h4>
+                            <div class="flex gap-2 items-end mb-3">
+                                <div class="flex-1">
+                                    <label class="text-xs text-slate-500 mb-1 block">اسم البند</label>
+                                    <input type="text" id="edit-custom-name" class="form-input text-sm" placeholder="مثال: مكتبة..">
+                                </div>
+                                <div class="w-20">
+                                    <label class="text-xs text-slate-500 mb-1 block">العدد</label>
+                                    <input type="number" id="edit-custom-qty" class="form-input text-sm" placeholder="0">
+                                </div>
+                                <button onclick="addEditCustomItem(${client.id})" class="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 transition-colors h-[38px] w-[38px] flex items-center justify-center"><i data-lucide="plus" class="w-4 h-4"></i></button>
+                            </div>
+                            <div id="edit-custom-list" class="space-y-2 max-h-32 overflow-y-auto custom-scrollbar">
+                                ${renderEditCustomItemsList(client)}
                             </div>
                         </div>
                         
@@ -3177,6 +3338,13 @@
             client.phone = document.getElementById('edit-phone').value;
             client.address = document.getElementById('edit-address').value;
             client.location = document.getElementById('edit-location').value;
+            
+            // Update Project Details
+            if(!client.projectDetails) client.projectDetails = {};
+            ['kitchen', 'bedroom', 'cladding', 'doors', 'vanity', 'tvUnit'].forEach(key => {
+                const el = document.getElementById(`edit-count-${key}`);
+                if(el) client.projectDetails[key] = parseInt(el.textContent) || 0;
+            });
             
             const mDate = document.getElementById('edit-measure-date').value;
             const mTime = document.getElementById('edit-measure-time').value;
@@ -3500,7 +3668,7 @@
                                         ${client.customProjects && client.customProjects.length ? '، ' + client.customProjects.map(p => `${p.name} (${p.qty})`).join('، ') : ''}
                                     </span>
                                 </td>
-                                <td>${parseInt(client.design.total).toLocaleString()} ريال</td>
+                                <td>${parseInt(client.design.total).toLocaleString()} ${companySettings.currency || 'SAR'}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -3508,15 +3676,15 @@
                     <div class="total-section">
                         <div class="total-row">
                             <span>الإجمالي</span>
-                            <span>${parseInt(client.design.total).toLocaleString()} ريال</span>
+                            <span>${parseInt(client.design.total).toLocaleString()} ${companySettings.currency || 'SAR'}</span>
                         </div>
                         <div class="total-row">
                             <span>الدفعة الأولى</span>
-                            <span style="color: #16a34a">${parseInt(client.design.firstPayment).toLocaleString()} ريال</span>
+                            <span style="color: #16a34a">${parseInt(client.design.firstPayment).toLocaleString()} ${companySettings.currency || 'SAR'}</span>
                         </div>
                         <div class="total-row final">
                             <span>المتبقي</span>
-                            <span>${(parseInt(client.design.total) - parseInt(client.design.firstPayment)).toLocaleString()} ريال</span>
+                            <span>${(parseInt(client.design.total) - parseInt(client.design.firstPayment)).toLocaleString()} ${companySettings.currency || 'SAR'}</span>
                         </div>
                     </div>
 
@@ -3617,7 +3785,7 @@
                         <div>استلمنا من السيد/السادة: <span class="field" style="display: inline-block; min-width: 300px;">${client.name}</span></div>
                         
                         <div class="amount-box">
-                            مبلغ وقدره: <span>${parseInt(client.design.firstPayment).toLocaleString()} ريال سعودي</span>
+                            مبلغ وقدره: <span>${parseInt(client.design.firstPayment).toLocaleString()} ${companySettings.currency || 'SAR'}</span>
                         </div>
 
                         <div>وذلك مقابل: <span class="field">دفعة أولى - عقد تنفيذ أعمال</span></div>
@@ -3751,15 +3919,15 @@
                     <div class="total-section">
                         <div class="total-row">
                             <span>المجموع قبل الضريبة</span>
-                            <span>${subTotal.toLocaleString()} ريال</span>
+                            <span>${subTotal.toLocaleString()} ${companySettings.currency || 'SAR'}</span>
                         </div>
                         <div class="total-row">
                             <span>الضريبة (${taxRate}%)</span>
-                            <span>${taxAmount.toLocaleString()} ريال</span>
+                            <span>${taxAmount.toLocaleString()} ${companySettings.currency || 'SAR'}</span>
                         </div>
                         <div class="total-row final">
                             <span>المجموع الكلي</span>
-                            <span>${total.toLocaleString()} ريال</span>
+                            <span>${total.toLocaleString()} ${companySettings.currency || 'SAR'}</span>
                         </div>
                     </div>
 
@@ -3773,6 +3941,127 @@
                     <div class="footer">
                         <p>تم إصدار هذا العرض إلكترونياً من نظام إدارة العملاء CRP</p>
                         <p>صلاحية العرض 15 يوماً من تاريخه</p>
+                    </div>
+                    <script>window.print();<\/script>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+        }
+
+        function printWorkOrder(id) {
+            const client = clients.find(c => c.id == id);
+            if(!client) return;
+
+            const items = client.quotationItems || [];
+            
+            const printWindow = window.open('', '_blank');
+            const logo = companySettings.logo ? `<img src="${companySettings.logo}" style="width: 80px; height: 80px; object-fit: contain;">` : `
+                <svg viewBox="0 0 100 100" style="width: 80px; height: 80px;">
+                    <path d="M 10,50 A 40,40 0 1,1 90,50" fill="none" stroke="#0f3057" stroke-width="8" stroke-linecap="round" />
+                    <path d="M 90,50 A 40,40 0 1,1 10,50" fill="none" stroke="#f97316" stroke-width="8" stroke-linecap="round" />
+                    <text x="50" y="72" font-family="Arial, sans-serif" font-weight="800" font-size="60" text-anchor="middle" fill="#0f3057">1</text>
+                </svg>
+            `;
+
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html lang="ar" dir="rtl">
+                <head>
+                    <meta charset="UTF-8">
+                    <title>أمر شغل - ${client.name}</title>
+                    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+                    <style>
+                        body { font-family: 'Cairo', sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+                        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0f3057; padding-bottom: 20px; margin-bottom: 30px; }
+                        .company-info h1 { color: #0f3057; margin: 0 0 5px 0; font-size: 22px; }
+                        .title-box { text-align: center; margin-bottom: 30px; }
+                        .title-box h2 { background: #0f3057; color: white; display: inline-block; padding: 8px 30px; border-radius: 5px; margin: 0; font-size: 18px; }
+                        
+                        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; background: #f8fafc; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px; }
+                        .info-row { margin-bottom: 8px; font-size: 14px; }
+                        .info-label { color: #64748b; font-weight: bold; width: 100px; display: inline-block; }
+                        .info-val { color: #0f172a; font-weight: bold; }
+
+                        table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+                        th { background: #e2e8f0; color: #0f3057; padding: 10px; text-align: right; font-size: 13px; border: 1px solid #cbd5e1; }
+                        td { border: 1px solid #cbd5e1; padding: 10px; font-size: 14px; color: #334155; }
+                        
+                        .notes-section { border: 1px dashed #cbd5e1; padding: 15px; min-height: 100px; margin-bottom: 30px; border-radius: 8px; }
+                        .notes-title { font-weight: bold; margin-bottom: 10px; font-size: 14px; color: #0f3057; }
+
+                        .signatures { display: flex; justify-content: space-between; margin-top: 50px; }
+                        .sig-box { width: 45%; text-align: center; }
+                        .sig-line { border-top: 1px solid #000; margin-top: 40px; }
+
+                        @media print {
+                            body { padding: 0; }
+                            th { -webkit-print-color-adjust: exact; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <div class="company-info">
+                            <h1>${companySettings.name}</h1>
+                            <p>${companySettings.phone}</p>
+                        </div>
+                        <div>${logo}</div>
+                    </div>
+
+                    <div class="title-box">
+                        <h2>أمر شغل / تركيب | WORK ORDER</h2>
+                    </div>
+
+                    <div class="info-grid">
+                        <div>
+                            <div class="info-row"><span class="info-label">العميل:</span> <span class="info-val">${client.name}</span></div>
+                            <div class="info-row"><span class="info-label">الجوال:</span> <span class="info-val">${client.phone}</span></div>
+                            <div class="info-row"><span class="info-label">العنوان:</span> <span class="info-val">${client.address}</span></div>
+                        </div>
+                        <div>
+                            <div class="info-row"><span class="info-label">رقم الملف:</span> <span class="info-val">${client.code}</span></div>
+                            <div class="info-row"><span class="info-label">رقم الوظيفة:</span> <span class="info-val">${client.installation?.jobNo || '-'}</span></div>
+                            <div class="info-row"><span class="info-label">تاريخ التركيب:</span> <span class="info-val">${client.installation?.startDate || 'غير محدد'}</span></div>
+                            <div class="info-row"><span class="info-label">فريق التركيب:</span> <span class="info-val">${client.installation?.team || '-'}</span></div>
+                        </div>
+                    </div>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th width="50">#</th>
+                                <th>وصف البند / العمل المطلوب</th>
+                                <th width="80" style="text-align:center">الكمية</th>
+                                <th width="150">ملاحظات الفني</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${items.length > 0 ? items.map((item, idx) => `
+                                <tr>
+                                    <td>${idx + 1}</td>
+                                    <td>${item.name}</td>
+                                    <td style="text-align:center; font-weight:bold;">${item.qty}</td>
+                                    <td></td>
+                                </tr>
+                            `).join('') : '<tr><td colspan="4" style="text-align:center; padding: 20px;">لا توجد بنود مسجلة</td></tr>'}
+                        </tbody>
+                    </table>
+
+                    <div class="notes-section">
+                        <div class="notes-title">ملاحظات التركيب / الموقع:</div>
+                        <p style="font-size: 12px; color: #64748b;">${client.notes || ''}</p>
+                    </div>
+
+                    <div class="signatures">
+                        <div class="sig-box">
+                            <p>توقيع مشرف التركيب</p>
+                            <div class="sig-line"></div>
+                        </div>
+                        <div class="sig-box">
+                            <p>توقيع العميل (على إتمام التركيب)</p>
+                            <div class="sig-line"></div>
+                        </div>
                     </div>
                     <script>window.print();<\/script>
                 </body>
