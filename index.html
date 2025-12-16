@@ -295,12 +295,16 @@
         <!-- Modal content injected via JS -->
     </div>
 
+    <!-- Edit Client Modal -->
+    <div id="editClientModal" class="fixed inset-0 modal-backdrop z-50 hidden flex items-center justify-center p-4">
+    </div>
+
     <!-- JavaScript Application Logic -->
     <script>
         // --- Data & Constants ---
         let users = [
-            { id: 1, name: 'خالد رمزي', role: 'admin', username: 'admin' },
-            { id: 2, name: 'أحمد مندوب', role: 'sales', username: 'sales' }
+            { id: 1, name: 'خالد رمزي', role: 'admin', username: 'admin', password: '123' },
+            { id: 2, name: 'أحمد مندوب', role: 'sales', username: 'sales', password: '123' }
         ];
 
         let companySettings = {
@@ -324,7 +328,7 @@
                 source: 'social', status: 'potential', employeeId: 1,
                 projectDetails: { kitchen: 1, bedroom: 2, cladding: 0, doors: 5, vanity: 2, tvUnit: 1 },
                 measurements: { status: 'pending', date: '', files: [] },
-                design: { status: 'pending', total: 0, firstPayment: 0, signed: false },
+                design: { status: 'pending', total: 0, firstPayment: 0, offerApproved: false, contractSigned: false },
                 designImages: [],
                 quotationItems: [],
                 installation: { status: 'pending', jobNo: '', startDate: '', endDate: '', lastPayment: 0 },
@@ -340,7 +344,7 @@
                 source: 'referral', status: 'design', employeeId: 2,
                 projectDetails: { kitchen: 1, bedroom: 0, cladding: 10, doors: 0, vanity: 3, tvUnit: 1 },
                 measurements: { status: 'completed', date: '2025-02-15', files: ['croquis.pdf'] },
-                design: { status: 'waiting_approval', total: 55000, firstPayment: 20000, signed: false },
+                design: { status: 'waiting_approval', total: 55000, firstPayment: 20000, offerApproved: true, contractSigned: false },
                 designImages: [],
                 quotationItems: [
                     { name: 'أعمال تجليد خشب', qty: 10, price: 2500 },
@@ -356,6 +360,16 @@
                 ]
             }
         ];
+
+        const USER_ROLES = {
+            admin: 'آدمن',
+            sales: 'موظف مبيعات',
+            measure_eng: 'مهندس رفع المقاسات',
+            design_eng: 'مهندس التصميم',
+            pricing: 'موظف التسعير',
+            install_eng: 'مهندس التركيب',
+            supervisor: 'مشرف'
+        };
 
         const STATUS_OPTIONS = [
             { id: 'new', label: 'جديد', color: 'bg-blue-100 text-blue-700 border-blue-200' },
@@ -381,6 +395,7 @@
         let clients = [];
         let activeTab = 'registration';
         let searchQuery = '';
+        let statusFilter = 'all'; // For Registration View
         
         // Active Selections
         let selectedClientId = null;
@@ -494,7 +509,7 @@
             const nextIndex = (currentIndex + 1) % users.length;
             currentUser = users[nextIndex];
             document.getElementById('user-name').textContent = currentUser.name;
-            document.getElementById('user-role').textContent = currentUser.role === 'admin' ? 'مدير النظام' : 'مندوب مبيعات';
+            document.getElementById('user-role').textContent = USER_ROLES[currentUser.role];
             document.getElementById('role-indicator').className = `absolute bottom-0 right-0 w-2.5 h-2.5 border-2 border-[#0a2342] rounded-full ${currentUser.role === 'admin' ? 'bg-green-400' : 'bg-yellow-400'}`;
             render();
         }
@@ -507,6 +522,9 @@
             if (searchQuery) {
                 const q = searchQuery.toLowerCase();
                 filtered = filtered.filter(c => c.name.toLowerCase().includes(q) || c.phone.includes(q) || c.code.toLowerCase().includes(q));
+            }
+            if (activeTab === 'registration' && statusFilter !== 'all') {
+                filtered = filtered.filter(c => c.status === statusFilter);
             }
             return filtered;
         }
@@ -781,6 +799,16 @@
                             </h3>
                             <span class="bg-blue-100 text-blue-800 text-xs px-2.5 py-1 rounded-full font-bold">${data.length} عميل</span>
                         </div>
+                        
+                        <!-- Filters -->
+                        <div class="p-3 border-b border-slate-100 dark:border-slate-700 flex gap-2 overflow-x-auto custom-scrollbar">
+                            <button onclick="setStatusFilter('all')" class="px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${statusFilter === 'all' ? 'bg-[#0f3057] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">الكل</button>
+                            <button onclick="setStatusFilter('potential')" class="px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${statusFilter === 'potential' ? 'bg-yellow-500 text-white' : 'bg-yellow-50 text-yellow-700 hover:bg-yellow-100'}">محتمل</button>
+                            <button onclick="setStatusFilter('interested')" class="px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${statusFilter === 'interested' ? 'bg-blue-500 text-white' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'}">مهتم</button>
+                            <button onclick="setStatusFilter('inquiry')" class="px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${statusFilter === 'inquiry' ? 'bg-purple-500 text-white' : 'bg-purple-50 text-purple-700 hover:bg-purple-100'}">استفسار</button>
+                            <button onclick="setStatusFilter('measurements')" class="px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${statusFilter === 'measurements' ? 'bg-indigo-500 text-white' : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'}">رفع مقاسات</button>
+                        </div>
+
                         <div class="overflow-x-auto">
                             <table class="w-full text-right text-sm">
                                 <thead class="bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-300 font-medium">
@@ -826,6 +854,9 @@
                                                     <button onclick="openClientModal(${c.id})" class="p-2 text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors" title="التفاصيل">
                                                         <i data-lucide="eye" class="w-4 h-4"></i>
                                                     </button>
+                                                    <button onclick="openEditClientModal(${c.id})" class="p-2 text-orange-600 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors" title="تعديل">
+                                                        <i data-lucide="edit" class="w-4 h-4"></i>
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -841,6 +872,8 @@
 
         // 2. Measurements View
         function renderMeasurementsView(data) {
+            // Filter: Only show clients who are in 'measurements' status OR have a pending measurement request
+            const measureClients = data.filter(c => c.status === 'measurements' || (c.measureRequest && c.measureRequest.date));
             const selectedClient = selectedClientId ? clients.find(c => c.id == selectedClientId) : null;
             const projectDetails = selectedClient ? selectedClient.projectDetails : { kitchen: 0, bedroom: 0, cladding: 0, doors: 0, vanity: 0, tvUnit: 0 };
             const appointment = selectedClient?.appointment || { date: '', time: '', status: 'pending' };
@@ -863,7 +896,7 @@
                                     <div class="relative">
                                         <select onchange="selectClientForMeasure(this.value)" class="form-input appearance-none bg-white dark:bg-slate-700 cursor-pointer">
                                             <option value="">اختر عميل...</option>
-                                            ${clients.map(c => `<option value="${c.id}" ${c.id == selectedClientId ? 'selected' : ''}>${c.name} (${c.code})</option>`).join('')}
+                                            ${measureClients.map(c => `<option value="${c.id}" ${c.id == selectedClientId ? 'selected' : ''}>${c.name} (${c.code})</option>`).join('')}
                                         </select>
                                         <i data-lucide="chevron-down" class="absolute left-3 top-3 w-4 h-4 text-slate-400 pointer-events-none"></i>
                                     </div>
@@ -879,23 +912,14 @@
                                 </div>
                             </div>
 
-                            <!-- 1. Appointment Section -->
-                            <div class="bg-blue-50/50 dark:bg-blue-900/20 p-6 rounded-xl border border-blue-100 dark:border-blue-800 mb-8 ${!selectedClient ? 'opacity-50 pointer-events-none' : ''}">
-                                <h4 class="text-sm font-bold text-blue-800 mb-4 flex items-center gap-2">
-                                    <i data-lucide="calendar-clock" class="w-4 h-4"></i> تحديد موعد القياس
-                                </h4>
-                                <div class="flex flex-wrap items-end gap-4">
-                                    <div class="space-y-1 flex-1 min-w-[200px]">
-                                        <label class="text-xs font-bold text-slate-500">تاريخ الزيارة</label>
-                                        <input type="date" id="measure-date" value="${appointment.date}" class="form-input">
+                            <!-- Appointment Info (Read Only) -->
+                            <div class="bg-blue-50/50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800 mb-8 ${!selectedClient ? 'hidden' : ''}">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <h4 class="text-sm font-bold text-blue-800 flex items-center gap-2"><i data-lucide="calendar" class="w-4 h-4"></i> موعد الزيارة المحدد</h4>
+                                        <p class="text-sm text-blue-600 mt-1">${selectedClient?.appointment?.date ? `${selectedClient.appointment.date} - ${selectedClient.appointment.time}` : 'لم يتم تحديد موعد (يرجى التعديل من التسجيل)'}</p>
                                     </div>
-                                    <div class="space-y-1 flex-1 min-w-[150px]">
-                                        <label class="text-xs font-bold text-slate-500">وقت الزيارة</label>
-                                        <input type="time" id="measure-time" value="${appointment.time}" class="form-input">
-                                    </div>
-                                    <button onclick="saveAppointment()" class="bg-blue-600 text-white px-6 py-2.5 rounded-lg hover:bg-blue-700 shadow-sm font-bold transition-colors h-[42px]">
-                                        حفظ الموعد
-                                    </button>
+                                    <button onclick="openEditClientModal(${selectedClient?.id})" class="text-xs bg-white border border-blue-200 text-blue-600 px-3 py-1 rounded hover:bg-blue-50">تعديل الموعد</button>
                                 </div>
                             </div>
 
@@ -993,7 +1017,7 @@
                                 <div class="relative">
                                     <select onchange="selectClientForDesign(this.value)" class="form-input appearance-none bg-slate-50 dark:bg-slate-700 cursor-pointer">
                                         <option value="">اختر عميل...</option>
-                                        ${clients.map(c => `<option value="${c.id}" ${c.id == selectedClientForDesignId ? 'selected' : ''}>${c.name} - ${getStatusLabel(c.status)}</option>`).join('')}
+                                        ${clients.filter(c => c.status === 'design' || c.status === 'measurements').map(c => `<option value="${c.id}" ${c.id == selectedClientForDesignId ? 'selected' : ''}>${c.name} - ${getStatusLabel(c.status)}</option>`).join('')}
                                     </select>
                                     <i data-lucide="chevron-down" class="absolute left-3 top-3.5 w-4 h-4 text-slate-400 pointer-events-none"></i>
                                 </div>
@@ -1015,17 +1039,30 @@
                                     <!-- Measurements Files -->
                                     <div class="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-xl border border-indigo-100 dark:border-indigo-800">
                                         <h3 class="font-bold text-indigo-800 text-sm mb-2 flex items-center gap-2"><i data-lucide="ruler" class="w-4 h-4"></i> ملفات المقاسات</h3>
-                                        <div class="space-y-1">
+                                        <div class="space-y-2">
                                             ${(() => {
-                                                const allFiles = getAllMeasurementFiles(selectedClient);
-                                                return allFiles.length > 0 ? allFiles.map(f => `
+                                                if (!selectedClient) return '';
+                                                const croquis = getMeasurementCroquis(selectedClient);
+                                                const sitePhotos = getSitePhotos(selectedClient);
+                                                
+                                                let html = '';
+                                                if(croquis.length > 0) {
+                                                    html += '<p class="text-[10px] font-bold text-indigo-400">الكروكي:</p>';
+                                                    html += croquis.map(f => `
                                                     <div class="flex items-center gap-2 text-xs bg-white dark:bg-slate-800 p-2 rounded border border-indigo-100 dark:border-indigo-700">
                                                         <i data-lucide="file" class="w-3 h-3 text-indigo-500"></i>
                                                         <span class="truncate flex-1 dark:text-slate-300">${f.name || f}</span>
                                                         <button onclick="window.open('${f.url || '#'}')" class="text-indigo-600 hover:underline">عرض</button>
-                                                    </div>
-                                                `).join('') : '<span class="text-xs text-slate-400">لا توجد ملفات مقاسات مرفقة</span>';
-                                            })()}
+                                                    </div>`).join('');
+                                                }
+                                                if(sitePhotos.length > 0) {
+                                                    html += '<p class="text-[10px] font-bold text-indigo-400 mt-2">صور/فيديو الموقع:</p>';
+                                                    html += `<div class="flex gap-1 overflow-x-auto pb-1">${sitePhotos.map(f => `
+                                                        <div onclick="openLightbox('${f.url}')" class="w-10 h-10 flex-shrink-0 bg-white rounded border cursor-pointer"><img src="${f.url}" class="w-full h-full object-cover"></div>
+                                                    `).join('')}</div>`;
+                                                }
+                                                return html || '<span class="text-xs text-slate-400">لا توجد ملفات</span>';
+                                            })()} 
                                         </div>
                                     </div>
                                 </div>
@@ -1039,6 +1076,7 @@
                                     ${designItems.map(item => {
                                         const itemFiles = (selectedClient?.design?.itemFiles && selectedClient.design.itemFiles[item.id]) || [];
                                         const itemNotes = (selectedClient?.design?.itemNotes && selectedClient.design.itemNotes[item.id]) || '';
+                                        const measureFiles = (selectedClient?.measurements?.itemFiles && selectedClient.measurements.itemFiles[item.id]) || [];
                                         return `
                                             <div class="bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
                                                 <div class="p-3 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
@@ -1050,6 +1088,25 @@
                                                         <input type="file" multiple accept="image/*,.pdf" onchange="handleItemDesignUpload(this, '${item.id}')" class="absolute inset-0 opacity-0 cursor-pointer">
                                                     </div>
                                                 </div>
+                                                ${measureFiles.length > 0 ? `
+                                                <div class="p-3 border-b border-slate-200 dark:border-slate-700 bg-blue-50/50 dark:bg-blue-900/20">
+                                                    <p class="text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-1"><i data-lucide="ruler" class="w-3 h-3"></i> ملفات المقاسات (صور/فيديو):</p>
+                                                    <div class="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
+                                                        ${measureFiles.map(f => `
+                                                            <div class="relative flex-shrink-0 w-20 h-20 bg-white dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-600 overflow-hidden cursor-pointer group" onclick="${f.type.includes('pdf') ? `window.open('${f.url}')` : `openLightbox('${f.url}')`}">
+                                                                ${f.type.startsWith('video') ? 
+                                                                    `<video src="${f.url}" class="w-full h-full object-cover"></video><div class="absolute inset-0 flex items-center justify-center bg-black/30"><i data-lucide="play" class="w-6 h-6 text-white"></i></div>` :
+                                                                    (f.type.includes('pdf') ? 
+                                                                        `<div class="w-full h-full flex flex-col items-center justify-center"><i data-lucide="file-text" class="w-6 h-6 text-red-500"></i><span class="text-[8px] mt-1 truncate w-full text-center">${f.name}</span></div>` :
+                                                                        `<img src="${f.url}" class="w-full h-full object-cover">`
+                                                                    )
+                                                                }
+                                                                <div class="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[8px] py-0.5 text-center truncate">${f.category === 'croquis' ? 'كروكي' : 'موقع'}</div>
+                                                            </div>
+                                                        `).join('')}
+                                                    </div>
+                                                </div>
+                                                ` : ''}
                                                 <div class="p-3">
                                                     <div class="grid grid-cols-3 md:grid-cols-4 gap-3">
                                                         ${itemFiles.map((file, idx) => {
@@ -1085,6 +1142,11 @@
                                     <h3 class="font-bold text-slate-700 dark:text-slate-200 mb-4 text-sm flex items-center gap-2">
                                         <i data-lucide="check-circle-2" class="w-4 h-4 text-slate-400"></i> حالة اعتماد التصميم
                                     </h3>
+                                    <div class="mb-4 flex flex-wrap justify-end gap-2">
+                                        <button onclick="downloadFiles('measurements')" class="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded hover:bg-indigo-700 flex items-center gap-1"><i data-lucide="download" class="w-3 h-3"></i> تحميل ملفات المقاسات</button>
+                                        <button onclick="downloadFiles('design')" class="text-xs bg-purple-600 text-white px-3 py-1.5 rounded hover:bg-purple-700 flex items-center gap-1"><i data-lucide="download" class="w-3 h-3"></i> تحميل ملفات التصميم</button>
+                                        <button onclick="createDesignPackage()" class="text-xs bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 flex items-center gap-1"><i data-lucide="package" class="w-3 h-3"></i> تجميع ملف PDF</button>
+                                    </div>
                                     <div class="grid grid-cols-3 gap-3">
                                         <button onclick="updateDesignStatus('approved')" class="flex flex-col items-center justify-center gap-2 py-3 px-2 rounded-lg border transition-all ${selectedClient?.design?.status === 'approved' ? 'bg-green-50 border-green-500 text-green-700 dark:bg-green-900/20 dark:text-green-400' : 'border-slate-200 text-slate-500 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-700'}">
                                             <i data-lucide="check" class="w-5 h-5"></i>
@@ -1103,11 +1165,14 @@
 
                                 <div class="pt-6 border-t border-slate-100 dark:border-slate-700">
                                     <div class="flex gap-3 mt-6">
-                                        <button onclick="switchTab('pricing'); selectClientForPricing(${selectedClient?.id})" class="flex-1 bg-purple-600 text-white hover:bg-purple-700 py-3 rounded-lg font-bold transition shadow-lg shadow-purple-200 flex justify-center gap-2">
-                                            <i data-lucide="arrow-right" class="w-5 h-5"></i> الانتقال للتسعير
+                                        <button onclick="saveDesignWork()" class="flex-1 bg-slate-600 text-white hover:bg-slate-700 py-3 rounded-lg font-bold transition shadow-lg flex justify-center gap-2">
+                                            <i data-lucide="save" class="w-5 h-5"></i> حفظ العمل
                                         </button>
-                                        <button onclick="openWhatsAppModal(${selectedClient?.id})" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 shadow-lg shadow-green-200 font-bold flex items-center gap-2 transition-colors" title="تواصل مع العميل">
+                                        <button onclick="openWhatsAppModal(${selectedClient?.id})" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 shadow-lg font-bold flex items-center gap-2 transition-colors" title="تواصل مع العميل">
                                             <i data-lucide="message-circle" class="w-5 h-5"></i> تواصل
+                                        </button>
+                                        <button onclick="sendToPricing()" class="flex-1 bg-purple-600 text-white hover:bg-purple-700 py-3 rounded-lg font-bold transition shadow-lg flex justify-center gap-2">
+                                            <i data-lucide="arrow-right" class="w-5 h-5"></i> إرسال للتسعير
                                         </button>
                                     </div>
                                 </div>
@@ -1154,6 +1219,17 @@
                             </div>
 
                             <div class="${!selectedClient ? 'opacity-50 pointer-events-none filter blur-sm' : ''} transition-all">
+                                <!-- Project Files Section -->
+                                <div class="bg-slate-50 dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-700 mb-6">
+                                    <h4 class="font-bold text-slate-700 dark:text-slate-200 mb-3 text-sm flex items-center gap-2">
+                                        <i data-lucide="folder-input" class="w-4 h-4 text-blue-500"></i> ملفات المشروع (من التصميم والمقاسات)
+                                    </h4>
+                                    <div class="flex gap-3">
+                                        <button onclick="downloadFiles('measurements')" class="flex items-center gap-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 px-3 py-2 rounded hover:bg-slate-50 dark:hover:bg-slate-700 transition text-indigo-600 font-bold"><i data-lucide="ruler" class="w-4 h-4"></i> استعراض المقاسات</button>
+                                        <button onclick="downloadFiles('design')" class="flex items-center gap-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 px-3 py-2 rounded hover:bg-slate-50 dark:hover:bg-slate-700 transition text-purple-600 font-bold"><i data-lucide="image" class="w-4 h-4"></i> استعراض التصاميم</button>
+                                    </div>
+                                </div>
+
                                 <!-- Items Table -->
                                 <div class="bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden mb-6">
                                     <table class="w-full text-right text-sm">
@@ -1197,13 +1273,20 @@
                                 <!-- Summary & Actions -->
                                 <div class="flex flex-col md:flex-row justify-between items-end gap-6">
                                     <div class="w-full md:w-1/3 space-y-4">
-                                         <div class="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl p-4 flex items-start gap-3">
-                                            <input type="checkbox" id="signed-pricing" ${selectedClient?.design?.signed ? 'checked' : ''} class="w-5 h-5 text-green-600 rounded mt-0.5 cursor-pointer accent-green-600">
-                                            <div>
-                                                <label for="signed-pricing" class="font-bold text-slate-700 dark:text-slate-200 select-none cursor-pointer block">اعتماد العرض وتوقيع العقد</label>
-                                                <p class="text-xs text-slate-500 mt-1">تفعيل هذا الخيار ينقل العميل لمرحلة التنفيذ.</p>
+                                         <div class="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl p-4 space-y-3">
+                                            <div class="flex items-center gap-3">
+                                                <input type="checkbox" id="offer-approved" ${selectedClient?.design?.offerApproved ? 'checked' : ''} class="w-5 h-5 text-blue-600 rounded cursor-pointer accent-blue-600">
+                                                <label for="offer-approved" class="font-bold text-slate-700 dark:text-slate-200 select-none cursor-pointer">اعتماد عرض السعر</label>
                                             </div>
+                                            <div class="flex items-center gap-3">
+                                                <input type="checkbox" id="contract-signed" ${selectedClient?.design?.contractSigned ? 'checked' : ''} class="w-5 h-5 text-green-600 rounded cursor-pointer accent-green-600">
+                                                <label for="contract-signed" class="font-bold text-slate-700 dark:text-slate-200 select-none cursor-pointer">توقيع العقد</label>
+                                            </div>
+                                            <hr class="border-slate-200 dark:border-slate-600">
+                                            <label class="text-xs font-bold text-slate-500 block mb-1">تاريخ التركيب المتوقع (بالعقد)</label>
+                                            <input type="date" id="contract-install-date" value="${selectedClient?.installation?.startDate || ''}" class="form-input text-sm">
                                         </div>
+                                        <button onclick="generateContract()" class="w-full bg-slate-800 text-white py-2 rounded-lg text-xs font-bold hover:bg-slate-900"><i data-lucide="file-signature" class="w-3 h-3 inline"></i> إنشاء العقد</button>
                                     </div>
                                     
                                     <div class="bg-slate-100 dark:bg-slate-900 p-5 rounded-xl min-w-[300px] space-y-3">
@@ -1227,10 +1310,13 @@
                                             <button onclick="printDetailedQuotation(${selectedClient?.id})" class="flex-1 bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-900/20 flex justify-center gap-2" title="طباعة PDF">
                                                 <i data-lucide="printer" class="w-4 h-4"></i>
                                             </button>
-                                            <button onclick="savePricingData()" class="flex-[2] bg-green-600 text-white py-2 rounded-lg font-bold hover:bg-green-700 transition shadow-lg shadow-green-900/20 flex justify-center gap-2">
+                                            <button onclick="savePricingData()" class="flex-[2] bg-slate-600 text-white py-2 rounded-lg font-bold hover:bg-slate-700 transition shadow-lg flex justify-center gap-2">
                                                 <i data-lucide="save" class="w-4 h-4"></i> حفظ العرض
                                             </button>
                                         </div>
+                                        <button onclick="sendToInstallationFromPricing()" class="w-full bg-green-600 text-white py-2 rounded-lg font-bold hover:bg-green-700 transition shadow-lg shadow-green-900/20 flex justify-center gap-2 mt-2">
+                                            <i data-lucide="wrench" class="w-4 h-4"></i> إرسال للتركيب
+                                        </button>
                                         <button onclick="openWhatsAppModal(${selectedClient?.id})" class="w-full bg-green-100 text-green-700 py-2 rounded-lg font-bold hover:bg-green-200 transition flex justify-center gap-2 mt-2">
                                             <i data-lucide="message-circle" class="w-4 h-4"></i> تواصل مع العميل
                                         </button>
@@ -1310,7 +1396,7 @@
                                     <div class="relative">
                                         <select onchange="selectClientForInstall(this.value)" class="form-input appearance-none bg-slate-50 dark:bg-slate-700 cursor-pointer">
                                             <option value="">اختر عميل...</option>
-                                            ${clients.filter(c => c.design.signed && c.status !== 'completed').map(c => `<option value="${c.id}" ${c.id == selectedClientForInstallId ? 'selected' : ''}>${c.name}</option>`).join('')}
+                                            ${clients.filter(c => c.design.contractSigned && c.status !== 'completed').map(c => `<option value="${c.id}" ${c.id == selectedClientForInstallId ? 'selected' : ''}>${c.name}</option>`).join('')}
                                         </select>
                                         <i data-lucide="chevron-down" class="absolute left-3 top-3.5 w-4 h-4 text-slate-400 pointer-events-none"></i>
                                     </div>
@@ -1702,7 +1788,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
                         ${renderStatCard('إجمالي العروض', offers.length, 'file-text', 'bg-blue-600', 'text-white')}
                         ${renderStatCard('قيمة العروض', offers.reduce((a,b) => a + (parseInt(b.design.total)||0), 0).toLocaleString() + ' ريال', 'dollar-sign', 'bg-white', 'text-slate-800', 'border-l-4 border-green-500')}
-                        ${renderStatCard('تم التعاقد', offers.filter(c => c.design.signed).length, 'check-circle', 'bg-white', 'text-slate-800', 'border-l-4 border-purple-500')}
+                        ${renderStatCard('تم التعاقد', offers.filter(c => c.design.contractSigned).length, 'check-circle', 'bg-white', 'text-slate-800', 'border-l-4 border-purple-500')}
                     </div>
 
                     <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden transition-colors">
@@ -1729,8 +1815,8 @@
                                             <td class="p-3 text-slate-800 dark:text-slate-200 font-bold">${parseInt(c.design.total).toLocaleString()} ريال</td>
                                             <td class="p-3 text-green-600">${parseInt(c.design.firstPayment).toLocaleString()} ريال</td>
                                             <td class="p-3">
-                                                <span class="px-2.5 py-1 rounded-full text-xs font-bold ${c.design.signed ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}">
-                                                    ${c.design.signed ? 'تم التعاقد' : 'بانتظار الموافقة'}
+                                                <span class="px-2.5 py-1 rounded-full text-xs font-bold ${c.design.contractSigned ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}">
+                                                    ${c.design.contractSigned ? 'تم التعاقد' : 'بانتظار الموافقة'}
                                                 </span>
                                             </td>
                                             <td class="p-3 text-center">
@@ -1958,6 +2044,7 @@
                                         <tr>
                                             <th class="p-3">الاسم</th>
                                             <th class="p-3">اسم المستخدم</th>
+                                            <th class="p-3">كلمة المرور</th>
                                             <th class="p-3">الصلاحية</th>
                                             <th class="p-3 text-center">إجراءات</th>
                                         </tr>
@@ -1967,9 +2054,10 @@
                                             <tr class="hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
                                                 <td class="p-3 font-bold text-slate-800 dark:text-slate-200">${u.name}</td>
                                                 <td class="p-3 text-slate-600 dark:text-slate-400 font-mono">${u.username || '-'}</td>
+                                                <td class="p-3 text-slate-600 dark:text-slate-400 font-mono">****</td>
                                                 <td class="p-3">
                                                     <span class="px-2.5 py-1 rounded-full text-xs font-bold ${getRoleBadgeColor(u.role)}">
-                                                        ${getRoleLabel(u.role)}
+                                                        ${USER_ROLES[u.role] || u.role}
                                                     </span>
                                                 </td>
                                                 <td class="p-3 text-center">
@@ -2001,12 +2089,13 @@
                                         <input type="text" id="user-username-input" class="form-input" placeholder="username">
                                     </div>
                                     <div class="space-y-1">
+                                        <label class="form-label">كلمة المرور</label>
+                                        <input type="password" id="user-password-input" class="form-input" placeholder="******">
+                                    </div>
+                                    <div class="space-y-1">
                                         <label class="form-label">الصلاحية</label>
                                         <select id="user-role-input" class="form-input bg-white dark:bg-slate-700">
-                                            <option value="sales">مندوب مبيعات</option>
-                                            <option value="admin">مدير نظام</option>
-                                            <option value="designer">مصمم</option>
-                                            <option value="accountant">محاسب</option>
+                                            ${Object.entries(USER_ROLES).map(([k,v]) => `<option value="${k}">${v}</option>`).join('')}
                                         </select>
                                     </div>
                                     <button onclick="addNewUser()" class="w-full bg-[#0f3057] text-white py-3 rounded-lg hover:bg-[#1a4b82] shadow-lg shadow-blue-900/20 font-bold flex items-center justify-center gap-2 transition-all active:scale-95 mt-2">
@@ -2245,6 +2334,11 @@
             `;
         }
 
+        function setStatusFilter(status) {
+            statusFilter = status;
+            render();
+        }
+
         function getStatusLabel(s) { const o = STATUS_OPTIONS.find(x => x.id === s); return o ? o.label : s; }
         function getStatusColor(s) { const o = STATUS_OPTIONS.find(x => x.id === s); return o ? o.color : 'bg-gray-100'; }
 
@@ -2390,7 +2484,7 @@
             if(!newClientForm.name || !newClientForm.phone) return alert('الاسم ورقم الجوال مطلوبان');
             if(clients.some(c => c.phone === newClientForm.phone)) return alert('رقم الجوال مسجل مسبقاً!');
 
-            const client = {
+            let client = {
                 ...newClientForm,
                 id: Date.now(),
                 status: targetStatus || newClientForm.clientStatus || 'potential',
@@ -2398,7 +2492,7 @@
                 logs: [{ date: new Date().toLocaleDateString('en-US'), type: 'system', text: 'تسجيل جديد' }],
                 measurements: { status: 'pending', date: '', files: [] },
                 appointment: { date: '', time: '', status: 'pending' },
-                design: { status: 'pending', total: 0, firstPayment: 0, signed: false },
+                design: { status: 'pending', total: 0, firstPayment: 0, offerApproved: false, contractSigned: false },
                 designImages: [],
                 quotationItems: [],
                 installation: { status: 'pending', jobNo: '', startDate: '', endDate: '', lastPayment: 0 },
@@ -2407,6 +2501,10 @@
 
             if(targetStatus === 'measurements') {
                 client.logs.push({ date: new Date().toLocaleDateString('en-US'), type: 'system', text: 'تم التحويل لقسم القياسات' });
+                // Ensure appointment is set if sending to measurements
+                if(!client.appointment.date && newClientForm.measureRequest.date) {
+                    client.appointment = { date: newClientForm.measureRequest.date, time: newClientForm.measureRequest.time, status: 'scheduled' };
+                }
             }
 
             clients.unshift(client);
@@ -2426,6 +2524,11 @@
         }
 
         function sendToMeasurements() {
+            // Check if measurement request exists
+            if(!newClientForm.measureRequest.date && !newClientForm.measureRequest.time) {
+                if(!confirm('لم يتم تحديد موعد لرفع المقاسات. هل تريد المتابعة وإرسال العميل لقائمة الانتظار في قسم المقاسات؟')) return;
+            }
+            
             if(confirm('هل أنت متأكد من حفظ البيانات وإرسالها لقسم رفع المقاسات؟')) {
                 saveNewClient('measurements');
             }
@@ -2506,6 +2609,20 @@
             return items;
         }
 
+        function getMeasurementCroquis(client) {
+            if(!client.measurements.itemFiles) return [];
+            let files = [];
+            Object.values(client.measurements.itemFiles).forEach(arr => files.push(...arr.filter(f => f.category === 'croquis')));
+            return files;
+        }
+
+        function getSitePhotos(client) {
+            if(!client.measurements.itemFiles) return [];
+            let files = [];
+            Object.values(client.measurements.itemFiles).forEach(arr => files.push(...arr.filter(f => f.category === 'site')));
+            return files;
+        }
+
         function handleSaveMeasurements() {
             if (!selectedClientId) return;
             const client = clients.find(c => c.id == selectedClientId);
@@ -2583,17 +2700,6 @@
                     saveClients();
                 }
             }
-        }
-
-        function getAllMeasurementFiles(client) {
-            let files = [];
-            if (client?.measurements?.files) {
-                client.measurements.files.forEach(f => files.push(typeof f === 'string' ? { name: f, url: '#', type: 'application/pdf' } : f));
-            }
-            if (client?.measurements?.itemFiles) {
-                Object.values(client.measurements.itemFiles).forEach(arr => files.push(...arr));
-            }
-            return files;
         }
 
         // Design Images Logic
@@ -2682,6 +2788,148 @@
             }
         }
 
+        function saveDesignWork() {
+            if (!selectedClientForDesignId) return;
+            saveClients();
+            alert('تم حفظ العمل بنجاح. يمكنك العودة للتعديل في أي وقت.');
+        }
+
+        function sendToPricing() {
+            if (!selectedClientForDesignId) return;
+            const client = clients.find(c => c.id == selectedClientForDesignId);
+            if(client) {
+                if(client.design.status !== 'approved') {
+                    if(!confirm('حالة التصميم ليست "موافقة". هل أنت متأكد من الإرسال للتسعير؟')) return;
+                }
+                switchTab('pricing');
+                selectClientForPricing(client.id);
+            }
+        }
+
+        function createDesignPackage() {
+            if (!selectedClientForDesignId) return;
+            alert('جاري تجميع ملف التصميم الكامل (PDF) الذي يحتوي على التصاميم والمقاسات...');
+            // Simulation of PDF generation
+            setTimeout(() => alert('تم إنشاء ملف التصميم بنجاح!'), 1000);
+        }
+
+        function downloadFiles(type) {
+            let clientId = null;
+            if (activeTab === 'design') clientId = selectedClientForDesignId;
+            else if (activeTab === 'pricing') clientId = selectedClientForPricingId;
+            
+            if (!clientId) return alert('يرجى اختيار عميل أولاً');
+            
+            const client = clients.find(c => c.id == clientId);
+            if (!client) return;
+
+            const items = getMeasurementItems(client);
+            let groupedData = [];
+            let totalFiles = 0;
+
+            items.forEach(item => {
+                let itemFiles = [];
+                if (type === 'measurements') {
+                     if (client.measurements?.itemFiles?.[item.id]) {
+                        itemFiles = client.measurements.itemFiles[item.id];
+                     }
+                } else {
+                     if (client.design?.itemFiles?.[item.id]) {
+                        itemFiles = client.design.itemFiles[item.id];
+                     }
+                }
+
+                if (itemFiles.length > 0) {
+                    groupedData.push({ name: item.label, files: itemFiles });
+                    totalFiles += itemFiles.length;
+                }
+            });
+
+            if (totalFiles === 0) return alert('لا توجد ملفات متاحة للتحميل');
+
+            // Create a simple HTML page to display/download files
+            const win = window.open('', '_blank');
+            win.document.write(`
+                <!DOCTYPE html>
+                <html lang="ar" dir="rtl">
+                <head>
+                    <meta charset="UTF-8">
+                    <title>تحميل ملفات ${type === 'measurements' ? 'المقاسات' : 'التصميم'} - ${client.name}</title>
+                    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+                    <style>
+                        :root { --primary: #0f3057; --bg: #f8f9fc; }
+                        body { font-family: 'Cairo', sans-serif; background-color: var(--bg); margin: 0; padding: 40px; color: #334155; }
+                        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+                        .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid #f1f5f9; padding-bottom: 20px; }
+                        .header h1 { color: var(--primary); margin: 0 0 10px 0; font-size: 24px; }
+                        .header p { color: #64748b; margin: 0; font-size: 14px; }
+                        .client-info { background: #f1f5f9; padding: 20px; border-radius: 12px; display: flex; flex-wrap: wrap; gap: 20px; justify-content: space-between; margin-bottom: 40px; }
+                        .info-item h3 { font-size: 11px; color: #64748b; margin: 0 0 5px 0; text-transform: uppercase; }
+                        .info-item p { font-size: 15px; font-weight: bold; color: var(--primary); margin: 0; }
+                        
+                        .section-title { font-size: 18px; font-weight: bold; color: var(--primary); margin: 30px 0 15px 0; padding-bottom: 10px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 10px; }
+                        .section-title span { background: #e0f2fe; color: #0284c7; padding: 5px 10px; border-radius: 8px; font-size: 12px; }
+
+                        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px; }
+                        .card { border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; background: white; }
+                        .card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+                        .preview { height: 160px; background: #f8fafc; display: flex; align-items: center; justify-content: center; overflow: hidden; border-bottom: 1px solid #e2e8f0; position: relative; }
+                        .preview img { width: 100%; height: 100%; object-fit: cover; }
+                        .preview video { width: 100%; height: 100%; object-fit: cover; }
+                        .preview .icon { font-size: 40px; }
+                        .details { padding: 12px; }
+                        .filename { font-size: 13px; font-weight: bold; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; color: #334155; text-decoration: none; }
+                        .type { font-size: 10px; color: #94a3b8; background: #f1f5f9; padding: 2px 8px; border-radius: 4px; display: inline-block; }
+                        .actions { margin-top: 10px; display: flex; gap: 8px; }
+                        .btn { flex: 1; text-align: center; padding: 6px 0; font-size: 11px; border-radius: 6px; text-decoration: none; font-weight: bold; transition: background 0.2s; cursor: pointer; border: none; display: inline-block; }
+                        .btn-download { background: #eff6ff; color: #2563eb; }
+                        .btn-download:hover { background: #dbeafe; }
+                        .btn-view { background: #f8fafc; color: #475569; }
+                        .btn-view:hover { background: #f1f5f9; }
+                        .print-btn { display: block; width: 200px; margin: 40px auto 0; background: var(--primary); color: white; border: none; padding: 12px; border-radius: 8px; font-family: inherit; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+                        .print-btn:hover { background: #1e40af; }
+                        .footer { margin-top: 40px; text-align: center; font-size: 11px; color: #94a3b8; }
+                        @media print {
+                            body { background: white; padding: 0; }
+                            .container { box-shadow: none; padding: 0; max-width: 100%; }
+                            .print-btn, .actions { display: none; }
+                            .card { break-inside: avoid; border: 1px solid #ccc; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1>ملفات ${type === 'measurements' ? 'المقاسات والموقع' : 'التصميم المعتمدة'}</h1>
+                            <p>${companySettings.name} - نظام إدارة العملاء</p>
+                        </div>
+                        <div class="client-info">
+                            <div class="info-item"><h3>العميل</h3><p>${client.name}</p></div>
+                            <div class="info-item"><h3>رقم الملف</h3><p>${client.code}</p></div>
+                            <div class="info-item"><h3>عدد الملفات</h3><p>${totalFiles} ملف</p></div>
+                            <div class="info-item"><h3>التاريخ</h3><p>${new Date().toLocaleDateString('ar-EG')}</p></div>
+                        </div>
+                        
+                        ${groupedData.map(group => `
+                            <div class="section-title">
+                                ${group.name} <span>${group.files.length} ملفات</span>
+                            </div>
+                            <div class="grid">
+                                ${group.files.map(f => {
+                                    let preview = f.type.startsWith('image') ? `<img src="${f.url}">` : (f.type.startsWith('video') ? `<video src="${f.url}"></video><div style="position:absolute;color:white;background:rgba(0,0,0,0.5);padding:5px;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;">▶</div>` : `<div class="icon">${f.type.includes('pdf') ? '📄' : '📁'}</div>`);
+                                    return `<div class="card"><div class="preview">${preview}</div><div class="details"><div class="filename" title="${f.name}">${f.name || 'بدون اسم'}</div><span class="type">${f.type.startsWith('image') ? 'صورة' : (f.type.includes('pdf') ? 'مستند' : 'ملف')}</span><div class="actions"><a href="${f.url}" download="${f.name || 'file'}" class="btn btn-download">تحميل</a><a href="${f.url}" target="_blank" class="btn btn-view">عرض</a></div></div></div>`;
+                                }).join('')}
+                            </div>
+                        `).join('')}
+
+                        <button onclick="window.print()" class="print-btn">طباعة / حفظ كـ PDF</button>
+                        <div class="footer"><p>تم استخراج هذا التقرير من نظام CRP</p></div>
+                    </div>
+                </body>
+                </html>
+            `);
+        }
+
         function updateItemDesignNote(itemId, note) {
             if (!selectedClientForDesignId) return;
             const client = clients.find(c => c.id == selectedClientForDesignId);
@@ -2752,20 +3000,42 @@
                 const taxRate = parseFloat(companySettings.taxRate) || 0;
                 const total = subTotal + (subTotal * (taxRate / 100));
                 const first = document.getElementById('pricing-first-payment').value;
-                const signed = document.getElementById('signed-pricing').checked;
+                
+                const offerApproved = document.getElementById('offer-approved').checked;
+                const contractSigned = document.getElementById('contract-signed').checked;
+                const installDate = document.getElementById('contract-install-date').value;
 
                 client.design.total = total;
                 client.design.firstPayment = first;
-                client.design.signed = signed;
+                client.design.offerApproved = offerApproved;
+                client.design.contractSigned = contractSigned;
                 
-                if (signed) {
-                    client.design.status = 'approved';
-                    client.status = 'design';
+                if(installDate) {
+                    if(!client.installation) client.installation = {};
+                    client.installation.startDate = installDate;
                 }
+                
                 saveClients();
                 render();
                 alert('تم حفظ عرض السعر بنجاح');
             }
+        }
+
+        function sendToInstallationFromPricing() {
+            if (!selectedClientForPricingId) return;
+            const client = clients.find(c => c.id == selectedClientForPricingId);
+            if(client) {
+                if(!client.design.contractSigned) return alert('يجب توقيع العقد أولاً قبل الإرسال للتركيب');
+                client.status = 'installation'; // Move to installation phase
+                saveClients();
+                render();
+                alert('تم إرسال العميل لمرحلة التركيب');
+            }
+        }
+
+        function generateContract() {
+            if (!selectedClientForPricingId) return;
+            alert('جاري إنشاء العقد...');
         }
 
         // Accounts Functions
@@ -2799,15 +3069,17 @@
         function addNewUser() {
             const name = document.getElementById('user-name-input').value;
             const username = document.getElementById('user-username-input').value;
+            const password = document.getElementById('user-password-input').value;
             const role = document.getElementById('user-role-input').value;
 
-            if(!name || !username) return alert('يرجى إدخال الاسم واسم المستخدم');
+            if(!name || !username || !password) return alert('يرجى إدخال جميع البيانات');
             if(users.some(u => u.username === username)) return alert('اسم المستخدم موجود مسبقاً');
 
             users.push({
                 id: Date.now(),
                 name,
                 username,
+                password,
                 role
             });
             saveUsers();
@@ -2833,6 +3105,100 @@
                 saveClients();
                 alert('تم جدولة التركيب بنجاح');
             }
+        }
+
+        function openEditClientModal(id) {
+            const client = clients.find(c => c.id === id);
+            if(!client) return;
+            const modal = document.getElementById('editClientModal');
+            
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-slate-800 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden animate-scaleIn flex flex-col transition-colors">
+                    <div class="bg-orange-500 text-white p-4 flex justify-between items-center">
+                        <h2 class="text-lg font-bold">تعديل بيانات العميل: ${client.name}</h2>
+                        <button onclick="document.getElementById('editClientModal').classList.add('hidden')" class="hover:bg-white/10 p-1 rounded-full"><i data-lucide="x" class="w-5 h-5"></i></button>
+                    </div>
+                    <div class="p-6 overflow-y-auto max-h-[80vh] space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="space-y-1">
+                                <label class="form-label">الاسم</label>
+                                <input type="text" id="edit-name" value="${client.name}" class="form-input">
+                            </div>
+                            <div class="space-y-1">
+                                <label class="form-label">الجوال</label>
+                                <input type="text" id="edit-phone" value="${client.phone}" class="form-input">
+                            </div>
+                            <div class="space-y-1">
+                                <label class="form-label">العنوان</label>
+                                <input type="text" id="edit-address" value="${client.address}" class="form-input">
+                            </div>
+                            <div class="space-y-1">
+                                <label class="form-label">الموقع (رابط)</label>
+                                <input type="text" id="edit-location" value="${client.location || ''}" class="form-input">
+                            </div>
+                        </div>
+                        
+                        <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800">
+                            <h4 class="font-bold text-blue-800 mb-3 text-sm">تحديث طلب المقاسات</h4>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="space-y-1">
+                                    <label class="text-xs font-bold text-slate-500">تاريخ الزيارة</label>
+                                    <input type="date" id="edit-measure-date" value="${client.appointment?.date || ''}" class="form-input">
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="text-xs font-bold text-slate-500">الوقت</label>
+                                    <input type="time" id="edit-measure-time" value="${client.appointment?.time || ''}" class="form-input">
+                                </div>
+                                <div class="flex items-center gap-2 mt-4">
+                                    <input type="checkbox" id="edit-measure-paid" ${client.measureRequest?.isPaid ? 'checked' : ''} class="w-4 h-4">
+                                    <label class="text-sm">مدفوع؟</label>
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="text-xs font-bold text-slate-500">المبلغ</label>
+                                    <input type="number" id="edit-measure-amount" value="${client.measureRequest?.amount || 0}" class="form-input">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-4 border-t border-slate-100 dark:border-slate-700 flex justify-end gap-2">
+                        <button onclick="updateClient(${client.id})" class="bg-[#0f3057] text-white px-6 py-2 rounded-lg font-bold hover:bg-[#1a4b82]">حفظ التعديلات</button>
+                    </div>
+                </div>
+            `;
+            modal.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function updateClient(id) {
+            const client = clients.find(c => c.id === id);
+            if(!client) return;
+
+            client.name = document.getElementById('edit-name').value;
+            client.phone = document.getElementById('edit-phone').value;
+            client.address = document.getElementById('edit-address').value;
+            client.location = document.getElementById('edit-location').value;
+            
+            const mDate = document.getElementById('edit-measure-date').value;
+            const mTime = document.getElementById('edit-measure-time').value;
+            const mPaid = document.getElementById('edit-measure-paid').checked;
+            const mAmount = document.getElementById('edit-measure-amount').value;
+
+            if(mDate) {
+                client.appointment = { date: mDate, time: mTime, status: 'scheduled' };
+                client.measureRequest = { date: mDate, time: mTime, isPaid: mPaid, amount: mAmount };
+                
+                // If client was potential, move to measurements automatically if date is set
+                if(client.status === 'potential' || client.status === 'new') {
+                    if(confirm('تم تحديد موعد مقاسات. هل تريد نقل العميل لقائمة "رفع المقاسات"؟')) {
+                        client.status = 'measurements';
+                    }
+                }
+            }
+
+            saveClients();
+            render();
+            document.getElementById('editClientModal').classList.add('hidden');
+            alert('تم تحديث البيانات بنجاح');
         }
 
         function openClientModal(id) {
@@ -2893,7 +3259,7 @@
 
             // Prepare Files HTML
             let filesHtml = '';
-            const measureFiles = getAllMeasurementFiles(client);
+            const measureFiles = getMeasurementCroquis(client).concat(getSitePhotos(client));
             const designFiles = [];
             if(client.design?.itemFiles) {
                 Object.values(client.design.itemFiles).forEach(arr => designFiles.push(...arr));
@@ -2993,14 +3359,14 @@
                                 </div>
 
                                 <!-- Design -->
-                                <div class="border rounded-xl p-4 ${client.design.signed ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}">
+                                <div class="border rounded-xl p-4 ${client.design.contractSigned ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}">
                                     <div class="flex items-center justify-between mb-2">
                                         <span class="font-bold text-sm flex items-center gap-2 dark:text-slate-200">
                                             <i data-lucide="pen-tool" class="w-4 h-4"></i> التصميم
                                         </span>
-                                        ${client.design.signed ? '<i data-lucide="check" class="w-4 h-4 text-purple-600"></i>' : ''}
+                                        ${client.design.contractSigned ? '<i data-lucide="check" class="w-4 h-4 text-purple-600"></i>' : ''}
                                     </div>
-                                    <p class="text-xs text-slate-500 mb-1">الحالة: <span class="font-bold dark:text-slate-300">${client.design.signed ? 'تم التعاقد' : 'جاري العمل'}</span></p>
+                                    <p class="text-xs text-slate-500 mb-1">الحالة: <span class="font-bold dark:text-slate-300">${client.design.contractSigned ? 'تم التعاقد' : 'جاري العمل'}</span></p>
                                     ${client.design.total > 0 ? `<p class="text-[10px] text-slate-400">العقد: ${parseInt(client.design.total).toLocaleString()} ريال</p>` : ''}
                                 </div>
 
