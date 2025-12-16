@@ -23,6 +23,9 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+    <!-- html2pdf.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
     <style>
         body {
             font-family: 'Cairo', sans-serif;
@@ -1294,6 +1297,22 @@
                                             <input type="date" id="contract-install-date" value="${selectedClient?.installation?.startDate || ''}" class="form-input text-sm">
                                         </div>
                                         <button onclick="generateContract()" class="w-full bg-slate-800 text-white py-2 rounded-lg text-xs font-bold hover:bg-slate-900"><i data-lucide="file-signature" class="w-3 h-3 inline"></i> إنشاء العقد</button>
+                                        <button onclick="downloadContract()" class="w-full bg-red-700 text-white py-2 rounded-lg text-xs font-bold hover:bg-red-800 mt-2"><i data-lucide="file-down" class="w-3 h-3 inline"></i> تحميل العقد PDF</button>
+                                        
+                                        <!-- Contract Upload -->
+                                        <div class="mt-4 border-t border-slate-200 dark:border-slate-700 pt-4">
+                                            <label class="text-xs font-bold text-slate-500 mb-2 block">رفع العقد الموقع (PDF/Image)</label>
+                                            <div class="upload-zone bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 p-3 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-blue-50 transition-all relative rounded-xl">
+                                                <input type="file" accept="application/pdf,image/*" onchange="handleContractUpload(this)" class="absolute inset-0 opacity-0 cursor-pointer">
+                                                ${selectedClient?.design?.contractFile ? 
+                                                    `<div class="flex items-center gap-2 text-green-600 w-full justify-center"><i data-lucide="check-circle" class="w-5 h-5"></i><span class="text-xs font-bold">تم الرفع</span><button onclick="event.preventDefault(); window.open('${selectedClient.design.contractFile}')" class="z-10 text-blue-600 hover:underline text-xs px-2 border-r border-slate-300">عرض</button><button onclick="event.preventDefault(); deleteContractFile()" class="z-10 text-red-500 hover:text-red-700 text-xs px-2">حذف</button></div>` : 
+                                                    `<div class="flex flex-col items-center">
+                                                        <i data-lucide="upload-cloud" class="w-6 h-6 text-slate-400 mb-1"></i>
+                                                        <span class="text-[10px] text-slate-500">اضغط لرفع العقد الموقع</span>
+                                                     </div>`
+                                                }
+                                            </div>
+                                        </div>
                                     </div>
                                     
                                     <div class="bg-slate-100 dark:bg-slate-900 p-5 rounded-xl min-w-[300px] space-y-3">
@@ -1341,6 +1360,176 @@
                     </div>
                 </div>
             `;
+        }
+
+        function downloadContract() {
+            if (!selectedClientForPricingId) return;
+            const client = clients.find(c => c.id == selectedClientForPricingId);
+            if (!client) return;
+
+            // Notify user
+            const btn = document.activeElement;
+            const originalBtnText = btn.innerHTML;
+            btn.innerHTML = '<i data-lucide="loader-2" class="w-3 h-3 animate-spin inline"></i> جاري التحميل...';
+            lucide.createIcons();
+
+            const element = document.createElement('div');
+            element.style.width = '800px';
+            element.style.padding = '40px';
+            element.style.direction = 'rtl';
+            element.style.fontFamily = 'Cairo, sans-serif';
+            element.style.background = 'white';
+            element.style.color = '#000';
+            element.style.fontSize = '12px';
+
+            const total = parseFloat(client.design.total) || 0;
+            const first = parseFloat(client.design.firstPayment) || 0;
+            const remaining = total - first;
+
+            const logoHtml = companySettings.logo ? `<img src="${companySettings.logo}" style="max-height:80px; max-width:150px;">` : '';
+
+            element.innerHTML = `
+                <!-- Header -->
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #0f3057; padding-bottom:20px; margin-bottom:30px;">
+                    <div style="text-align:right;">
+                        <h2 style="color:#0f3057; margin:0 0 5px 0; font-size:18px;">${companySettings.name}</h2>
+                        <p style="margin:2px 0; color:#64748b;">${companySettings.subtitle || ''}</p>
+                        <p style="margin:2px 0; color:#64748b;">${companySettings.phone}</p>
+                        <p style="margin:2px 0; color:#64748b;">${companySettings.address}</p>
+                    </div>
+                    <div>${logoHtml}</div>
+                </div>
+                
+                <div style="text-align:center; margin-bottom:30px;">
+                    <h1 style="background:#0f3057; color:white; display:inline-block; padding:8px 30px; border-radius:20px; font-size:16px; margin:0;">عقد اتفاق وتوريد أعمال ديكور</h1>
+                </div>
+
+                <div style="margin-bottom:20px; line-height:1.8;">
+                    <p>إنه في يوم <strong>${new Date().toLocaleDateString('ar-EG')}</strong>، تم الاتفاق بين كل من:</p>
+                    <p><strong>الطرف الأول:</strong> شركة ${companySettings.name}، سجل تجاري رقم (${companySettings.taxId})، ويمثلها في هذا العقد إدارة المبيعات.</p>
+                    <p><strong>الطرف الثاني:</strong> السيد/ة <strong>${client.name}</strong>، جوال رقم <strong>${client.phone}</strong>، وعنوانه: ${client.address}.</p>
+                </div>
+
+                <!-- Scope -->
+                <div style="margin-bottom:20px;">
+                    <h3 style="color:#0f3057; border-bottom:1px solid #e2e8f0; padding-bottom:5px; margin-bottom:10px;">أولاً: موضوع العقد</h3>
+                    <p>يقوم الطرف الأول بتنفيذ أعمال الديكور/المفروشات للطرف الثاني وفقاً للتصاميم والمواصفات المعتمدة في عرض السعر رقم (QT-${client.code}).</p>
+                    
+                    <table style="width:100%; border-collapse:collapse; margin-top:10px; font-size:11px;">
+                        <thead style="background:#f1f5f9;">
+                            <tr>
+                                <th style="border:1px solid #cbd5e1; padding:8px; text-align:right;">م</th>
+                                <th style="border:1px solid #cbd5e1; padding:8px; text-align:right;">البند</th>
+                                <th style="border:1px solid #cbd5e1; padding:8px; text-align:center;">الكمية</th>
+                                <th style="border:1px solid #cbd5e1; padding:8px; text-align:left;">السعر</th>
+                                <th style="border:1px solid #cbd5e1; padding:8px; text-align:left;">الإجمالي</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${(client.quotationItems || []).map((item, idx) => `
+                            <tr>
+                                <td style="border:1px solid #cbd5e1; padding:8px;">${idx + 1}</td>
+                                <td style="border:1px solid #cbd5e1; padding:8px;">${item.name}</td>
+                                <td style="border:1px solid #cbd5e1; padding:8px; text-align:center;">${item.qty}</td>
+                                <td style="border:1px solid #cbd5e1; padding:8px; text-align:left;">${item.price.toLocaleString()}</td>
+                                <td style="border:1px solid #cbd5e1; padding:8px; text-align:left;">${(item.qty * item.price).toLocaleString()}</td>
+                            </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Financials -->
+                <div style="margin-bottom:20px;">
+                    <h3 style="color:#0f3057; border-bottom:1px solid #e2e8f0; padding-bottom:5px; margin-bottom:10px;">ثانياً: القيمة المالية والدفعات</h3>
+                    <div style="display:flex; gap:20px;">
+                        <div style="flex:1; background:#f8fafc; padding:15px; border:1px solid #e2e8f0; border-radius:8px;">
+                            <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                                <span>إجمالي العقد (شامل الضريبة):</span>
+                                <span style="font-weight:bold;">${total.toLocaleString()} ${companySettings.currency || 'SAR'}</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:5px; color:#16a34a;">
+                                <span>الدفعة الأولى (عند التوقيع):</span>
+                                <span style="font-weight:bold;">${first.toLocaleString()} ${companySettings.currency || 'SAR'}</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; color:#dc2626; border-top:1px solid #e2e8f0; pt-2;">
+                                <span>المتبقي (قبل التركيب):</span>
+                                <span style="font-weight:bold;">${remaining.toLocaleString()} ${companySettings.currency || 'SAR'}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Terms -->
+                <div style="margin-bottom:40px;">
+                    <h3 style="color:#0f3057; border-bottom:1px solid #e2e8f0; padding-bottom:5px; margin-bottom:10px;">ثالثاً: الشروط والأحكام</h3>
+                    <div style="font-size:10px; line-height:1.6; white-space: pre-line; color:#334155; columns: 2;">
+                        ${companySettings.contractTerms || 'تطبق الشروط العامة للشركة.'}
+                    </div>
+                </div>
+
+                <!-- Signatures -->
+                <div style="display:flex; justify-content:space-between; margin-top:40px;">
+                    <div style="text-align:center; width:40%;">
+                        <p style="font-weight:bold; margin-bottom:40px;">الطرف الأول (الشركة)</p>
+                        <p>_________________</p>
+                        <p style="font-size:10px; color:#94a3b8; margin-top:5px;">التوقيع والختم</p>
+                    </div>
+                    <div style="text-align:center; width:40%;">
+                        <p style="font-weight:bold; margin-bottom:40px;">الطرف الثاني (العميل)</p>
+                        <p>_________________</p>
+                        <p style="font-size:10px; color:#94a3b8; margin-top:5px;">الاسم والتوقيع</p>
+                    </div>
+                </div>
+            `;
+
+            const opt = {
+                margin: 10,
+                filename: `Contract_${client.code}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            html2pdf().set(opt).from(element).save().then(() => {
+                btn.innerHTML = originalBtnText;
+                lucide.createIcons();
+            }).catch(err => {
+                console.error(err);
+                alert('حدث خطأ أثناء إنشاء الملف');
+                btn.innerHTML = originalBtnText;
+                lucide.createIcons();
+            });
+        }
+
+        function handleContractUpload(input) {
+            if (!selectedClientForPricingId || !input.files || input.files.length === 0) return;
+            const client = clients.find(c => c.id == selectedClientForPricingId);
+            if (!client) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                if(!client.design) client.design = {};
+                client.design.contractFile = e.target.result;
+                client.design.contractSigned = true; // Auto sign
+                saveClients();
+                render();
+                alert('تم رفع العقد بنجاح');
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+
+        function deleteContractFile() {
+            if (!selectedClientForPricingId) return;
+            const client = clients.find(c => c.id == selectedClientForPricingId);
+            if (client && client.design && client.design.contractFile) {
+                if(confirm('هل أنت متأكد من حذف ملف العقد؟')) {
+                    delete client.design.contractFile;
+                    client.design.contractSigned = false;
+                    saveClients();
+                    render();
+                }
+            }
         }
 
         function updateFloatingButton() {
@@ -2945,9 +3134,108 @@
 
         function createDesignPackage() {
             if (!selectedClientForDesignId) return;
-            alert('جاري تجميع ملف التصميم الكامل (PDF) الذي يحتوي على التصاميم والمقاسات...');
-            // Simulation of PDF generation
-            setTimeout(() => alert('تم إنشاء ملف التصميم بنجاح!'), 1000);
+            const client = clients.find(c => c.id == selectedClientForDesignId);
+            if (!client) return;
+
+            // Notify user
+            const btn = document.activeElement;
+            const originalBtnText = btn.innerHTML;
+            btn.innerHTML = '<i data-lucide="loader-2" class="w-3 h-3 animate-spin inline"></i> جاري المعالجة...';
+            lucide.createIcons();
+
+            // Create temp container
+            const element = document.createElement('div');
+            element.style.width = '800px';
+            element.style.padding = '40px';
+            element.style.direction = 'rtl';
+            element.style.fontFamily = 'Cairo, sans-serif';
+            element.style.background = 'white';
+            
+            // Header
+            let html = `
+                <div style="text-align:center; margin-bottom:40px; border-bottom:2px solid #0f3057; padding-bottom:20px;">
+                    <h1 style="color:#0f3057; margin:0;">${companySettings.name}</h1>
+                    <p style="color:#64748b;">ملف التصميم والمواصفات الفنية</p>
+                </div>
+                <div style="background:#f8fafc; padding:20px; border-radius:10px; margin-bottom:30px; border:1px solid #e2e8f0;">
+                    <table style="width:100%; border-collapse:collapse;">
+                        <tr>
+                            <td style="padding:8px; font-weight:bold; color:#0f3057;">العميل:</td>
+                            <td style="padding:8px;">${client.name}</td>
+                            <td style="padding:8px; font-weight:bold; color:#0f3057;">الكود:</td>
+                            <td style="padding:8px;">${client.code}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding:8px; font-weight:bold; color:#0f3057;">الجوال:</td>
+                            <td style="padding:8px;">${client.phone}</td>
+                            <td style="padding:8px; font-weight:bold; color:#0f3057;">التاريخ:</td>
+                            <td style="padding:8px;">${new Date().toLocaleDateString('ar-EG')}</td>
+                        </tr>
+                    </table>
+                </div>
+            `;
+
+            // Content
+            const items = getMeasurementItems(client);
+            let hasContent = false;
+
+            items.forEach(item => {
+                const designFiles = (client.design?.itemFiles && client.design.itemFiles[item.id]) || [];
+                const measureFiles = (client.measurements?.itemFiles && client.measurements.itemFiles[item.id]) || [];
+                const allFiles = [...designFiles, ...measureFiles].filter(f => f.type.startsWith('image'));
+
+                if(allFiles.length > 0) {
+                    hasContent = true;
+                    html += `
+                        <div style="margin-bottom:30px; page-break-inside:avoid;">
+                            <h3 style="color:#0f3057; border-right:4px solid #f97316; padding-right:10px; margin-bottom:15px;">${item.label}</h3>
+                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+                    `;
+                    
+                    allFiles.forEach(f => {
+                        html += `
+                            <div style="border:1px solid #e2e8f0; border-radius:8px; overflow:hidden;">
+                                <img src="${f.url}" style="width:100%; height:250px; object-fit:cover;">
+                                <div style="padding:8px; background:#f1f5f9; text-align:center; font-size:12px;">${f.name}</div>
+                            </div>
+                        `;
+                    });
+
+                    html += `</div></div>`;
+                }
+            });
+
+            if(!hasContent) {
+                html += `<div style="text-align:center; padding:40px; color:#94a3b8;">لا توجد صور أو تصاميم متاحة لهذا العميل.</div>`;
+            }
+
+            // Footer
+            html += `
+                <div style="margin-top:50px; padding-top:20px; border-top:1px solid #e2e8f0; text-align:center; font-size:12px; color:#94a3b8;">
+                    تم إنشاء هذا الملف بواسطة نظام CRP
+                </div>
+            `;
+
+            element.innerHTML = html;
+
+            // Generate PDF
+            const opt = {
+                margin: 10,
+                filename: `Design_Package_${client.code}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            html2pdf().set(opt).from(element).save().then(() => {
+                btn.innerHTML = originalBtnText;
+                lucide.createIcons();
+            }).catch(err => {
+                console.error(err);
+                alert('حدث خطأ أثناء إنشاء الملف');
+                btn.innerHTML = originalBtnText;
+                lucide.createIcons();
+            });
         }
 
         function downloadFiles(type) {
