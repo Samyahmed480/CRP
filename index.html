@@ -238,8 +238,8 @@
                     <p class="text-sm font-bold text-white truncate" id="user-name">خالد رمزي</p>
                     <p class="text-[10px] text-blue-300 truncate" id="user-role">مدير النظام</p>
                 </div>
-                <button onclick="toggleRole()" class="text-blue-300 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors" title="تبديل الصلاحية">
-                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                <button onclick="logout()" class="text-red-300 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors" title="تسجيل الخروج">
+                    <i data-lucide="log-out" class="w-4 h-4"></i>
                 </button>
             </div>
         </div>
@@ -353,6 +353,71 @@
         </div>
     </div>
 
+    <!-- Login Modal -->
+    <div id="loginModal" class="fixed inset-0 z-[100] bg-[#0f3057] flex items-center justify-center p-4 hidden">
+        <div class="bg-white dark:bg-slate-800 w-full max-w-md rounded-2xl shadow-2xl p-8 animate-scaleIn">
+            <div class="text-center mb-8">
+                <div class="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i data-lucide="lock" class="w-10 h-10 text-[#0f3057]"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-slate-800 dark:text-white">تسجيل الدخول</h2>
+                <p class="text-slate-500 mt-2">نظام إدارة العملاء - CRP</p>
+            </div>
+            <form onsubmit="event.preventDefault(); handleLogin();" class="space-y-4">
+                <div>
+                    <label class="form-label">اسم المستخدم</label>
+                    <input type="text" id="login-username" class="form-input" placeholder="admin" required>
+                </div>
+                <div>
+                    <label class="form-label">كلمة المرور</label>
+                    <input type="password" id="login-password" class="form-input" placeholder="123" required>
+                </div>
+                <button type="submit" class="w-full bg-[#0f3057] text-white py-3 rounded-lg font-bold hover:bg-[#1a4b82] transition shadow-lg mt-4">
+                    دخول للنظام
+                </button>
+            </form>
+            <p id="login-error" class="text-red-500 text-sm text-center mt-4 hidden">اسم المستخدم أو كلمة المرور غير صحيحة</p>
+        </div>
+    </div>
+
+    <!-- Edit User Modal -->
+    <div id="editUserModal" class="fixed inset-0 modal-backdrop z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-scaleIn transition-colors">
+            <div class="bg-[#0f3057] text-white p-4 flex justify-between items-center">
+                <h3 class="font-bold flex items-center gap-2"><i data-lucide="user-cog" class="w-5 h-5"></i> تعديل بيانات المستخدم</h3>
+                <button onclick="document.getElementById('editUserModal').classList.add('hidden')" class="hover:bg-white/10 p-1 rounded-full"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="p-6 space-y-4 max-h-[80vh] overflow-y-auto custom-scrollbar">
+                <input type="hidden" id="edit-user-id">
+                <div class="space-y-1">
+                    <label class="form-label">الاسم الكامل</label>
+                    <input type="text" id="edit-user-name" class="form-input">
+                </div>
+                <div class="space-y-1">
+                    <label class="form-label">اسم المستخدم</label>
+                    <input type="text" id="edit-user-username" class="form-input">
+                </div>
+                <div class="space-y-1">
+                    <label class="form-label">كلمة المرور</label>
+                    <input type="text" id="edit-user-password" class="form-input">
+                </div>
+                <div class="space-y-1">
+                    <label class="form-label">الصلاحية</label>
+                    <select id="edit-user-role" class="form-input bg-white dark:bg-slate-700">
+                        <!-- Options injected via JS -->
+                    </select>
+                </div>
+                <div class="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-700">
+                    <label class="form-label text-xs">صلاحيات إضافية</label>
+                    <div id="edit-user-permissions" class="grid grid-cols-1 gap-2 bg-slate-50 dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+                        <!-- Checkboxes injected via JS -->
+                    </div>
+                </div>
+                <button onclick="saveUserChanges()" class="w-full bg-[#0f3057] text-white py-3 rounded-lg font-bold hover:bg-[#1a4b82] transition shadow-lg mt-4">حفظ التعديلات</button>
+            </div>
+        </div>
+    </div>
+
     <!-- JavaScript Application Logic -->
     <script>
         // --- Data & Constants ---
@@ -374,7 +439,7 @@
             currency: 'SAR'
         };
 
-        let currentUser = users[0]; // Start as Admin
+        let currentUser = null; // Start as null, wait for login
 
         const INITIAL_CLIENTS = [
             { 
@@ -504,7 +569,7 @@
             loadUsers();
             loadSettings();
             initDarkMode();
-            render();
+            checkLogin(); // Check if user is logged in
             lucide.createIcons();
         }
 
@@ -539,7 +604,6 @@
         function loadUsers() {
             const saved = localStorage.getItem('crm_users');
             if(saved) users = JSON.parse(saved);
-            if(!currentUser) currentUser = users[0];
         }
 
         function saveUsers() {
@@ -581,14 +645,36 @@
 
         function generateCode() { return 'BK-' + Math.floor(1000 + Math.random() * 9000); }
 
-        function toggleRole() {
-            const currentIndex = users.findIndex(u => u.id === currentUser.id);
-            const nextIndex = (currentIndex + 1) % users.length;
-            currentUser = users[nextIndex];
-            document.getElementById('user-name').textContent = currentUser.name;
-            document.getElementById('user-role').textContent = USER_ROLES[currentUser.role];
-            document.getElementById('role-indicator').className = `absolute bottom-0 right-0 w-2.5 h-2.5 border-2 border-[#0a2342] rounded-full ${currentUser.role === 'admin' ? 'bg-green-400' : 'bg-yellow-400'}`;
-            render();
+        function checkLogin() {
+            const savedUser = sessionStorage.getItem('crm_current_user');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                document.getElementById('loginModal').classList.add('hidden');
+                render();
+            } else {
+                document.getElementById('loginModal').classList.remove('hidden');
+            }
+        }
+
+        function handleLogin() {
+            const u = document.getElementById('login-username').value;
+            const p = document.getElementById('login-password').value;
+            const user = users.find(x => x.username === u && x.password === p);
+            if(user) {
+                currentUser = user;
+                sessionStorage.setItem('crm_current_user', JSON.stringify(user));
+                document.getElementById('loginModal').classList.add('hidden');
+                document.getElementById('login-error').classList.add('hidden');
+                render();
+            } else {
+                document.getElementById('login-error').classList.remove('hidden');
+            }
+        }
+
+        function logout() {
+            sessionStorage.removeItem('crm_current_user');
+            currentUser = null;
+            location.reload();
         }
 
         function getVisibleClients() {
@@ -691,6 +777,14 @@
 
         function render() {
             const container = document.getElementById('content-area');
+            
+            // Update Sidebar User Info
+            if(currentUser) {
+                document.getElementById('user-name').textContent = currentUser.name;
+                document.getElementById('user-role').textContent = USER_ROLES[currentUser.role] || currentUser.role;
+                document.getElementById('role-indicator').className = `absolute bottom-0 right-0 w-2.5 h-2.5 border-2 border-[#0a2342] rounded-full ${currentUser.role === 'admin' ? 'bg-green-400' : 'bg-yellow-400'}`;
+            }
+
             const visibleClients = getVisibleClients();
             
             let html = '';
@@ -2736,6 +2830,9 @@
                                                     </div>
                                                 </td>
                                                 <td class="p-3 text-center">
+                                                    <button onclick="openEditUserModal(${u.id})" class="text-blue-500 hover:bg-blue-50 p-2 rounded-lg transition-colors mr-1">
+                                                        <i data-lucide="edit" class="w-4 h-4"></i>
+                                                    </button>
                                                     <button onclick="deleteUser(${u.id})" class="text-red-400 hover:bg-red-50 p-2 rounded-lg transition-colors" ${u.id === 1 ? 'disabled opacity-50 cursor-not-allowed' : ''}>
                                                         <i data-lucide="trash-2" class="w-4 h-4"></i>
                                                     </button>
@@ -4198,11 +4295,59 @@
         }
 
         function deleteUser(id) {
-            if(id === 1) return alert('لا يمكن حذف المدير الرئيسي');
+            if(id === 1 || id === currentUser.id) return alert('لا يمكن حذف هذا المستخدم');
             if(confirm('هل أنت متأكد من حذف هذا المستخدم؟')) {
                 users = users.filter(u => u.id !== id);
                 saveUsers();
             }
+        }
+
+        function openEditUserModal(id) {
+            const user = users.find(u => u.id === id);
+            if(!user) return;
+
+            document.getElementById('edit-user-id').value = user.id;
+            document.getElementById('edit-user-name').value = user.name;
+            document.getElementById('edit-user-username').value = user.username;
+            document.getElementById('edit-user-password').value = user.password;
+            
+            // Populate Roles
+            const roleSelect = document.getElementById('edit-user-role');
+            roleSelect.innerHTML = Object.entries(USER_ROLES).map(([k,v]) => 
+                `<option value="${k}" ${user.role === k ? 'selected' : ''}>${v}</option>`
+            ).join('');
+
+            // Populate Permissions
+            const permContainer = document.getElementById('edit-user-permissions');
+            permContainer.innerHTML = PERMISSIONS.map(p => `
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="edit-perm-${p.id}" value="${p.id}" ${user.permissions && user.permissions.includes(p.id) ? 'checked' : ''} class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer">
+                    <label for="edit-perm-${p.id}" class="text-xs text-slate-600 dark:text-slate-300 select-none cursor-pointer">${p.label}</label>
+                </div>
+            `).join('');
+
+            document.getElementById('editUserModal').classList.remove('hidden');
+        }
+
+        function saveUserChanges() {
+            const id = parseInt(document.getElementById('edit-user-id').value);
+            const user = users.find(u => u.id === id);
+            if(!user) return;
+
+            const newUsername = document.getElementById('edit-user-username').value;
+            // Check if username is taken by another user
+            if(users.some(u => u.username === newUsername && u.id !== id)) return alert('اسم المستخدم مستخدم بالفعل لموظف آخر');
+
+            user.name = document.getElementById('edit-user-name').value;
+            user.username = newUsername;
+            user.password = document.getElementById('edit-user-password').value;
+            user.role = document.getElementById('edit-user-role').value;
+            user.permissions = Array.from(document.querySelectorAll('input[id^="edit-perm-"]:checked')).map(cb => cb.value);
+
+            saveUsers();
+            render();
+            document.getElementById('editUserModal').classList.add('hidden');
+            alert('تم تحديث بيانات المستخدم بنجاح');
         }
 
         function handleSaveInstallation() {
